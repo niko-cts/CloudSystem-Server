@@ -23,6 +23,9 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Singelton class for handling the cloud configuration.
@@ -46,16 +49,12 @@ public class ConfigHandler {
     }
 
     private File configFile;
-    private Logger logger = Logger.getLogger(ConfigHandler.class);
-    private boolean isLoggerConfigured = false;
+    private final Logger logger = Logger.getLogger(ConfigHandler.class);
 
     private ConfigHandler(){
-        if(!isLoggerConfigured){
-            logger.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
-            logger.setAdditivity(false);
-            logger.setLevel(Level.INFO);
-            isLoggerConfigured = true;
-        }
+        logger.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
+        logger.setAdditivity(false);
+        logger.setLevel(Level.INFO);
         try{
             this.configFile = new File("config.xml");
             if(!this.configFile.exists()){
@@ -155,6 +154,7 @@ public class ConfigHandler {
 
             Element root = doc.getDocumentElement();
             NodeList defaultServers = root.getElementsByTagName("defaultservers").item(0).getChildNodes();
+            List<Server> serverToStart = new ArrayList<>();
             for(int i = 0; i < defaultServers.getLength(); i++){
                 Node server = defaultServers.item(i);
                 NodeList children = server.getChildNodes();
@@ -163,45 +163,14 @@ public class ConfigHandler {
                 int port = Integer.parseInt(children.item(2).getTextContent());
                 String maxRam = children.item(3).getTextContent();
                 String motd = children.item(4).getTextContent();
-                String type = children.item(5).getTextContent();
-                ServerType serverType = null;
-                switch(type){
-                    case "BungeeCord":
-                        serverType = ServerType.BUNGEECORD;
-                        break;
-                    case "Lobby":
-                        serverType = ServerType.LOBBY;
-                        break;
-                    case "CaveHunt":
-                        serverType = ServerType.CAVEHUNT;
-                        break;
-                    case "FlowerWars2x1":
-                        serverType = ServerType.FLOWERWARS2x1;
-                        break;
-                    case "FlowerWars2x2":
-                        serverType = ServerType.FLOWERWARS2x2;
-                        break;
-                    case "FlowerWars4x2":
-                        serverType = ServerType.FLOWERWARS4x2;
-                        break;
-                    case "BeatingPirates":
-                        serverType = ServerType.BEATINGPIRATES;
-                        break;
-                    case "PaintTheSheep":
-                        serverType = ServerType.PAINTTHESHEEP;
-                        break;
-                    case "Landscapes":
-                        serverType = ServerType.LANDSCAPES;
-                        break;
-                    case "DSGVO":
-                        serverType = ServerType.DSGVO;
-                        break;
-                    default:
-                        serverType = ServerType.MINIGAME;
-                        break;
-                }
-                ServerHandler.getInstance().addServer(new Server(id, ip, port, maxRam, motd, serverType));
+                int maxPlayers =  Integer.parseInt(children.item(5).getTextContent());
+                String type = children.item(6).getTextContent();
+                ServerType serverType = Arrays.stream(ServerType.values()).filter(t-> t.name().equalsIgnoreCase(type)).findFirst().orElse(null);
+                serverToStart.add(new Server(id, ip, port, maxRam, motd, maxPlayers, serverType));
             }
+            // Niko change: moved under for loop, because when other servers are created
+            // the starting server won't send the cloud event properly
+            serverToStart.forEach(s-> ServerHandler.getInstance().addServer(s));
         } catch (ParserConfigurationException | SAXException | IOException e) {
             logger.warn(e.getMessage());
         }

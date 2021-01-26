@@ -3,6 +3,7 @@ package net.fununity.cloud.server.server;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
+import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -28,6 +29,7 @@ public final class Server {
 
     private static final String ERROR_NOT_EXIST_CREATING = " does not exists. Creating...";
     private static final String ERROR_COULD_NOT_CREATE_DIRECTORIES = "Could not create directories: ";
+    private static final String ERROR_COULD_NOT_SET_PROPERTIES = "Could not set properties: ";
     private static final String ERROR_COULD_NOT_RUN_COMMAND = "Could not execute command: ";
     private static final String ERROR_SERVER_ALREADY_RUNNING = "Server is already running!";
     private static final String ERROR_SERVER_IS_NOT_RUNNING = "Server is not running!";
@@ -42,14 +44,15 @@ public final class Server {
     private static final Logger LOG = Logger.getLogger(Server.class);
     private static boolean LOG_CONFIGURED = false;
 
-    private String serverId;
-    private String serverIp;
-    private int serverPort;
-    private ServerType serverType;
+    private final String serverId;
+    private final String serverIp;
+    private final int serverPort;
+    private final ServerType serverType;
     private ServerState serverState;
     private String serverPath;
-    private String serverMaxRam;
-    private String serverMotd;
+    private final String serverMaxRam;
+    private final String serverMotd;
+    private final int maxPlayers;
     private int playerCount;
 
     /**
@@ -64,7 +67,7 @@ public final class Server {
      * @since 0.0.1
      * @author Marco Hajek
      */
-    public Server(String serverId, String serverIp, int serverPort, String maxRam, String motd, ServerType serverType){
+    public Server(String serverId, String serverIp, int serverPort, String maxRam, String motd, int maxPlayers, ServerType serverType) {
         if(!LOG_CONFIGURED){
             LOG.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
             LOG.setAdditivity(false);
@@ -79,9 +82,11 @@ public final class Server {
         this.serverState = ServerState.IDLE;
         this.serverMaxRam = maxRam;
         this.serverMotd = motd;
+        this.maxPlayers = maxPlayers;
         this.playerCount = 0;
         this.createServerPath();
         this.createIfNotExists();
+        this.setServerProperties();
     }
 
     /**
@@ -96,8 +101,8 @@ public final class Server {
      * @since 0.0.1
      * @author Marco Hajek
      */
-    public Server(String serverId, String serverIp, String maxRam, String motd, ServerType serverType){
-        this(serverId, serverIp, ServerHandler.getInstance().getHighestServerPort()+1, maxRam, motd, serverType);
+    public Server(String serverId, String serverIp, String maxRam, String motd, int maxPlayers, ServerType serverType){
+        this(serverId, serverIp, ServerHandler.getInstance().getHighestServerPort()+1, maxRam, motd, maxPlayers, serverType);
     }
 
     /**
@@ -134,6 +139,15 @@ public final class Server {
      */
     public String getServerMotd(){
         return this.serverMotd;
+    }
+
+    /**
+     * Get the amount of maximum players of the server
+     * @return int - the maximum amount of players of the server
+     * @since 0.0.1
+     */
+    public int getMaxPlayers() {
+        return maxPlayers;
     }
 
     /**
@@ -185,18 +199,34 @@ public final class Server {
 
     /**
      * Adds the amount of players by one.
+     * Creates new lobby if player count of lobby goes above 20
      * @since 0.0.1
      */
     public void playerJoined() {
         playerCount++;
+        if(serverType == ServerType.LOBBY) {
+            if(playerCount >= (maxPlayers - (maxPlayers/10))) {
+                ServerHandler.getInstance().addNewLobbyServer();
+            } else {
+                ClientHandler.getInstance().sendLobbyInformationToLobbies();
+            }
+        }
     }
 
     /**
      * Reduces the amount of player by one.
+     * Removes the server if it's a empty lobby
      * @since 0.0.1
      */
     public void playerLeft() {
         playerCount--;
+        if(serverType == ServerType.LOBBY) {
+            if(playerCount == 0 && ServerHandler.getInstance().getLobbyCount() > 2) {
+                ServerHandler.getInstance().shutdownServer(this);
+            } else {
+                ClientHandler.getInstance().sendLobbyInformationToLobbies();
+            }
+        }
     }
 
     /**
@@ -207,22 +237,24 @@ public final class Server {
         StringBuilder path = new StringBuilder();
         path.append("./Servers/");
         path.append(this.serverType == ServerType.BUNGEECORD ? "BungeeCord/" : "Spigot/");
-        path.append(this.serverId + "/");
+        path.append(this.serverId).append("/");
         this.serverPath = path.toString();
     }
 
     /**
      * Creates the server directory and copies the template if it doesn't exist.
      * @since 0.0.1
-     * @throws IOException
      */
     private void createIfNotExists() {
         try{
-            if(!Files.exists(Paths.get(this.serverPath))){
+            if(Files.exists(Paths.get(this.serverPath)) && !Files.exists(Paths.get(this.serverPath + FILE_START))) {
+                deleteServerContent(Paths.get(this.serverPath).toFile());
+            }
+            if(!Files.exists(Paths.get(this.serverPath))) {
                 LOG.warn(this.serverPath + ERROR_NOT_EXIST_CREATING);
                 Files.createDirectories(Paths.get(this.serverPath));
                 String templatePath = createTemplatePath();
-                if(!Files.exists(Paths.get(templatePath))){
+                if(!Files.exists(Paths.get(templatePath))) {
                     LOG.warn(templatePath + ERROR_NOT_EXIST_CREATING);
                     Files.createDirectories(Paths.get(templatePath));
                 }
@@ -237,20 +269,29 @@ public final class Server {
                         LOG.warn("Could not copy file: " + file.toAbsolutePath());
                     }
                 });
-                if(this.serverType != ServerType.BUNGEECORD){
-                    File file = new File(this.serverPath + FILE_SERVER_PROPERTIES);
-                    file.createNewFile();
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    writer.write("server-ip=" + this.serverIp + "\n");
-                    writer.write("server-port=" + this.serverPort+ "\n");
-                    writer.write("motd=" + this.serverMotd + "\n");
-                    writer.write("online-mode=false\n");
-                    writer.flush();
-                    writer.close();
-                }
             }
         }catch(IOException e){
             LOG.warn(ERROR_COULD_NOT_CREATE_DIRECTORIES + e.getMessage());
+        }
+    }
+
+    private void setServerProperties() {
+        try {
+            if(this.serverType != ServerType.BUNGEECORD) {
+                File file = new File(this.serverPath + FILE_SERVER_PROPERTIES);
+                file.createNewFile();
+                BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                writer.write("server-ip=" + this.serverIp + "\n");
+                writer.write("server-port=" + this.serverPort+ "\n");
+                writer.write("motd=" + this.serverMotd + "\n");
+                writer.write("max-players=" + this.maxPlayers + "\n");
+                writer.write("online-mode=false\n");
+                writer.write("allow-nether=false\n");
+                writer.flush();
+                writer.close();
+            }
+        } catch (IOException e) {
+            LOG.warn(ERROR_COULD_NOT_SET_PROPERTIES + e.getMessage());
         }
     }
 
@@ -293,9 +334,6 @@ public final class Server {
             case LANDSCAPES:
                 path.append("Landscapes/");
                 break;
-            case DSGVO:
-                path.append("DSGVO/");
-                break;
             default:
                 LOG.warn("Could not create template path for " + this.serverId + "! ServerType is not supported.");
         }
@@ -307,13 +345,13 @@ public final class Server {
      * @since 0.0.1
      */
     public void start(){
-        if(this.serverState == ServerState.RUNNING){
+        if(this.serverState == ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_ALREADY_RUNNING);
             return;
         }
 
         File file = new File(this.serverPath + FILE_START);
-        if(!file.exists()){
+        if(!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
             return;
         }
@@ -331,7 +369,7 @@ public final class Server {
      * Tries to stop a server.
      * @since 0.0.1
      */
-    public void stop(boolean delete){
+    public void stop(boolean delete) {
         if(this.serverState != ServerState.RUNNING){
             LOG.warn(ERROR_SERVER_IS_NOT_RUNNING);
             return;
@@ -339,7 +377,7 @@ public final class Server {
 
         ServerHandler.getInstance().sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(this.serverId));
         File file = new File(this.serverPath + FILE_STOP);
-        if(!file.exists()){
+        if(!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
             return;
         }
@@ -348,7 +386,7 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            if(this.serverType != ServerType.LANDSCAPES && this.serverType != ServerType.DSGVO && delete){
+            if(this.serverType != ServerType.LANDSCAPES && delete) {
                 deleteServerContent(Paths.get(this.serverPath).toFile());
             }
         }catch(IOException e){
@@ -375,7 +413,7 @@ public final class Server {
      * Restarts the server.
      * Keep in mind, that the content of the server will be deleted.
      */
-    public void restart(){
+    public void restart() {
         this.stop(false);
         this.start();
     }

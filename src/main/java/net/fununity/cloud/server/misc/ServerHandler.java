@@ -28,9 +28,9 @@ public class ServerHandler {
     private static ServerHandler instance;
 
     private final ClientHandler clientHandler;
-    private List<Server> servers;
+    private final List<Server> servers;
     private Map<CloudEvent, List<String>> lobbyQueue;
-    private Queue<Server> startQueue;
+    private final Queue<Server> startQueue;
 
     /**
      * Default constructor of the server handler.
@@ -75,13 +75,10 @@ public class ServerHandler {
      * @see Server
      * @since 0.0.1
      */
-    public void addServer(Server server){
-        if(!this.servers.contains(server)){
+    public void addServer(Server server) {
+        if (!this.servers.contains(server)) {
             this.servers.add(server);
             this.addToStartQueue(server);
-            if(server.getServerId().toLowerCase().contains("lobby")){
-                this.clientHandler.sendLobbyCountToAllClients();
-            }
         }
     }
 
@@ -107,15 +104,15 @@ public class ServerHandler {
      * @see Server
      * @since 0.0.1
      */
-    private void createNewServerIfNeeded(Server oldServer){
+    private void createNewServerIfNeeded(Server oldServer) {
         int idleServers = 0;
-        for(Server server : this.servers){
+        for(Server server : this.servers) {
             if(server != oldServer && server.getServerType() == oldServer.getServerType() && server.getServerState() == ServerState.IDLE)
                 idleServers+=1;
         }
 
         if(idleServers < 1)
-            this.addServer(new Server(RandomStringUtils.random(16), "127.0.0.1", "512M", "motd", oldServer.getServerType()));
+            this.addServer(new Server(RandomStringUtils.random(16), oldServer.getServerIp(), oldServer.getServerMotd(), oldServer.getServerMotd(), oldServer.getMaxPlayers(), oldServer.getServerType()));
     }
 
     /**
@@ -126,8 +123,15 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public Server getServerByIdentifier(String identifier){
-        for(Server server : this.servers)
-            if(server.getServerId().equals(identifier)) return server;
+        for (Server server : this.servers) {
+            if(server.getServerId().equals(identifier))
+                return server;
+        }
+        StringBuilder builder = new StringBuilder();
+        for (Server server : this.servers) {
+            builder.append("[").append(server.getServerId()).append(":").append(server.getServerPort()).append("]").append(",");
+        }
+        LOG.warn("ServerId " + identifier + " was not found in the server list, but was requested! All Servers: " + builder.toString());
         return null;
     }
 
@@ -137,11 +141,16 @@ public class ServerHandler {
      * @return String - the identifier of the server.
      * @since 0.0.1
      */
-    public String getServerIdentifierByPort(int port){
-        for(Server server : this.servers){
+    public String getServerIdentifierByPort(int port) {
+        for (Server server : this.servers) {
             if(server.getServerPort() == port)
                 return server.getServerId();
         }
+        StringBuilder builder = new StringBuilder();
+        for (Server server : this.servers) {
+            builder.append("[").append(server.getServerId()).append(":").append(server.getServerPort()).append("]").append(",");
+        }
+        LOG.warn("Port " + port + " was not found in the server list, but was requested! All Servers: " + builder.toString());
         return "";
     }
 
@@ -151,43 +160,46 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public int getLobbyCount(){
-        int count = 0;
-        for(Server server : this.servers){
-            if(server.getServerId().toLowerCase().contains("lobby"))
-                count += 1;
-        }
-        return count;
+        return (int) this.servers.stream().filter(s-> s.getServerType() == ServerType.LOBBY).count();
     }
     /**
      * Returns the highest used port considering all known servers.
      * @since 0.0.1
      * @return int - the highest port.
      */
-    public int getHighestServerPort(){
+    public int getHighestServerPort() {
         int port = 0;
         for(Server server : this.servers)
-            if(server.getServerPort() > port)
+            if (server.getServerPort() > port)
                 port = server.getServerPort();
         return port;
     }
 
     /**
      * Shuts the server with the given server id down.
-     * @param serverId String - the server id.
+     * @param server Server - The server.
      * @since 0.0.1
      */
-    public void shutdownServer(String serverId) {
-        Server s = null;
-        for(Server server : this.servers){
-            if(server.getServerId().equalsIgnoreCase(serverId)){
-                s = server;
-                break;
-            }
-        }
+    public void shutdownServer(Server server) {
+        shutdownServer(server, false);
+    }
 
-        if(s != null){
-            this.servers.remove(s);
-            s.stop(true);
+    /**
+     * Shuts the server with the given server id down.
+     * @param server Server - The server.
+     * @param allServerOfType boolean - All server shut down
+     * @since 0.0.1
+     */
+    public void shutdownServer(Server server, boolean allServerOfType) {
+        if(server == null) return;
+        this.clientHandler.sendDisconnect(server.getServerId());
+        this.clientHandler.removeClient(server.getServerId());
+        this.servers.remove(server);
+        server.stop(true);
+        if(!allServerOfType)
+            MinigameHandler.getInstance().removeServer(server);
+        if (server.getServerType() == ServerType.LOBBY) {
+            this.clientHandler.sendLobbyInformationToLobbies();
         }
     }
 
@@ -197,12 +209,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public List<Server> getLobbyServers() {
-        ArrayList<Server> localServers = new ArrayList<>();
-        for(Server server : this.servers){
-            if(server.getServerType() == ServerType.LOBBY)
-                localServers.add(server);
-        }
-        return localServers;
+        return this.servers.stream().filter(s->s.getServerType() == ServerType.LOBBY).collect(Collectors.toList());
     }
 
     /**
@@ -213,8 +220,8 @@ public class ServerHandler {
      */
     public List<ServerDefinition> generateServerDefinitions() {
         List<ServerDefinition> definitions = new ArrayList<>();
-        for(Server server : this.servers){
-            definitions.add(new ServerDefinition(server.getServerId(), server.getServerIp(), server.getServerMaxRam(), server.getServerMotd(), server.getServerPort(), server.getServerType(), server.getServerState()));
+        for(Server server : this.servers) {
+            definitions.add(new ServerDefinition(server.getServerId(), server.getServerIp(), server.getServerMaxRam(), server.getServerMotd(), server.getMaxPlayers(), server.getServerPort(), server.getServerType(), server.getServerState()));
         }
         return definitions;
     }
@@ -227,19 +234,10 @@ public class ServerHandler {
      */
     public ServerDefinition getServerDefinitionByPort(int port) {
         Server server = getServerByIdentifier(getServerIdentifierByPort(port));
-        if(server != null){
-            return new ServerDefinition(server.getServerId(), server.getServerIp(), server.getServerMaxRam(), server.getServerMotd(), port, server.getServerType(), server.getServerState());
+        if(server != null) {
+            return new ServerDefinition(server.getServerId(), server.getServerIp(), server.getServerMaxRam(), server.getServerMotd(), server.getMaxPlayers(), port, server.getServerType(), server.getServerState());
         }
         return null;
-    }
-
-    /**
-     * Removes a server from the list.
-     * @param server Server - the server.
-     * @since 0.0.1
-     */
-    public void removeServer(Server server){
-        this.servers.remove(server);
     }
 
     /**
@@ -254,39 +252,23 @@ public class ServerHandler {
                 serversWithSameType.add(server);
 
         int highestNumber = 0;
-        for(Server server : serversWithSameType){
+        for(Server server : serversWithSameType) {
             int number = Integer.parseInt(server.getServerId().replaceAll("[^\\d.]", ""));
             if(number > highestNumber) highestNumber = number;
         }
-        highestNumber+=1;
+
+        highestNumber += 1;
         String serverId = getServerIdOfServerType(serverType);
         if(highestNumber < 10)
             serverId += "0" + highestNumber;
         else
             serverId += highestNumber;
 
-        String maxRam = getServerMaxRamOfServerType(serverType);
-
-        Server newServer = new Server(serverId, "127.0.0.1", maxRam, serverId, serverType);
-        this.servers.add(newServer);
-        newServer.start();
+        int maxPlayers = getMaxPlayersOfServerType(serverType);
+        addServer(new Server(serverId, "127.0.0.1", "512M", serverId, maxPlayers, serverType));
     }
 
-    /**
-     * Get the maximum amount of ram for a specified server type
-     * @param serverType ServerType - Type of Server
-     * @return String - Maximum amount of Ram
-     */
-    private String getServerMaxRamOfServerType(ServerType serverType) {
-        switch (serverType) {
-            case LANDSCAPES:
-                return "2048M";
-            default:
-                return "512M";
-        }
-    }
-
-    private String getServerIdOfServerType(ServerType serverType){
+    private String getServerIdOfServerType(ServerType serverType) {
         switch(serverType){
             case BUNGEECORD:
                 return "BungeeCord";
@@ -306,10 +288,19 @@ public class ServerHandler {
                 return "PTS";
             case LANDSCAPES:
                 return "LandScapes";
-            case DSGVO:
-                return "DSGVO";
         }
         return "";
+    }
+
+    private int getMaxPlayersOfServerType(ServerType serverType) {
+        switch(serverType) {
+            case BUNGEECORD:
+                return 120;
+            case LANDSCAPES:
+                return 50;
+            default:
+                return 30;
+        }
     }
 
     /**
@@ -317,17 +308,12 @@ public class ServerHandler {
      * @param type ServerType - the server type.
      * @since 0.0.1
      */
-    public void shutdownAllServersOfType(ServerType type){
-        List<Server> toRemove = new ArrayList<>();
-        for(Server server : this.servers){
-            if(server.getServerType() == type){
-                this.clientHandler.sendDisconnect(server.getServerId());
-                server.stop(true);
-                toRemove.add(server);
+    public void shutdownAllServersOfType(ServerType type) {
+        for(Server server : new ArrayList<>(this.servers)) {
+            if(server.getServerType() == type) {
+                shutdownServer(server, true);
             }
         }
-        for(Server server : toRemove)
-            this.servers.remove(server);
     }
 
     /**
@@ -337,8 +323,7 @@ public class ServerHandler {
      */
     public void restartAllServersOfType(ServerType serverType) {
         for(Server server : this.servers){
-            if(server.getServerType() == serverType){
-                this.clientHandler.sendDisconnect(server.getServerId());
+            if(server.getServerType() == serverType) {
                 server.restart();
             }
         }
@@ -349,8 +334,10 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServers() {
-        for(Server server : this.servers){
+        for(Server server : this.servers) {
+            shutdownServer(server, true);
             this.clientHandler.sendDisconnect(server.getServerId());
+            this.clientHandler.removeClient(server.getServerId());
             server.stop(true);
         }
         this.servers.clear();
@@ -375,12 +362,16 @@ public class ServerHandler {
      */
     public String getServerIdOfSuitableLobby() {
         Server lobby = null;
-        for(Server server : this.servers){
-            //if(server.getServerType() == ServerType.LOBBY && (lobby == null || lobby.getPlayerCount() > server.getPlayerCount()))
-            if(server.getServerType() == ServerType.LOBBY)
+        for(Server server : getLobbyServers()) {
+            if(lobby == null) {
                 lobby = server;
+            }
+            if (lobby.getPlayerCount() > server.getPlayerCount() && server.getPlayerCount() < (server.getMaxPlayers() - server.getMaxPlayers() / 10)) {
+                lobby = server;
+                break;
+            }
         }
-        return lobby.getServerId();
+        return lobby != null ? lobby.getServerId() : "";
     }
 
     /**
@@ -389,7 +380,7 @@ public class ServerHandler {
      * @param event CloudEvent - the event to queue up.
      * @since 0.0.1
      */
-    public void addToLobbyQueue(String serverId, CloudEvent event){
+    public void addToLobbyQueue(String serverId, CloudEvent event) {
         List<String> serverIds = new ArrayList<>();
         if(this.lobbyQueue.containsKey(event))
             serverIds = this.lobbyQueue.get(event);
@@ -401,11 +392,11 @@ public class ServerHandler {
      * Sends the events stored in the queue to the lobby server.
      * @since 0.0.1
      */
-    public void sendLobbyQueue(){
+    public void sendLobbyQueue() {
         Map<CloudEvent, List<String>> newQueue = new HashMap<>();
-        for(Map.Entry<CloudEvent, List<String>> entry : this.lobbyQueue.entrySet()){
+        for(Map.Entry<CloudEvent, List<String>> entry : this.lobbyQueue.entrySet()) {
             ArrayList<String> serverIds = (ArrayList<String>)entry.getValue();
-            for(String id : (List<String>)serverIds.clone()){
+            for(String id : (List<String>) serverIds.clone()) {
                 if(this.clientHandler.getClientContext(id) != null){
                     this.clientHandler.getClientContext(id).writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(entry.getKey()).toByteArray()));
                     serverIds.remove(id);
@@ -415,6 +406,7 @@ public class ServerHandler {
                 newQueue.put(entry.getKey(), serverIds);
         }
         this.lobbyQueue = newQueue;
+        clientHandler.sendLobbyInformationToLobbies();
     }
 
     /**
@@ -436,14 +428,15 @@ public class ServerHandler {
      * @param server Server - the server to add.
      * @since 0.0.1
      */
-    public void addToStartQueue(Server server){
-        if(server.getServerType() == ServerType.BUNGEECORD){
+    public void addToStartQueue(Server server) {
+        if(server.getServerType() == ServerType.BUNGEECORD) {
             server.start();
             return;
         }
         this.startQueue.add(server);
-        if(startQueue.size() == 1)
+        if(startQueue.size() == 1) {
             server.start();
+        }
     }
 
     /**
@@ -456,8 +449,9 @@ public class ServerHandler {
         Server server = getServerByIdentifier(def.getServerId());
         if(this.startQueue.contains(server)){
             this.startQueue.remove(server);
-            if(!this.startQueue.isEmpty())
+            if(!this.startQueue.isEmpty()) {
                 this.startQueue.peek().start();
+            }
         }
     }
 
@@ -466,13 +460,8 @@ public class ServerHandler {
      * @return List<Server> - the list of bungeecord servers.
      * @since 0.0.1
      */
-    public List<Server> getBungeeServers(){
-        List<Server> servers = new ArrayList<>();
-        for(Server server : this.servers){
-            if(server.getServerType() == ServerType.BUNGEECORD)
-                servers.add(server);
-        }
-        return servers;
+    public List<Server> getBungeeServers() {
+        return this.servers.stream().filter(s-> s.getServerType() == ServerType.BUNGEECORD).collect(Collectors.toList());
     }
 
     /**
@@ -542,5 +531,15 @@ public class ServerHandler {
             playerCount += server.getPlayerCount();
         }
         return playerCount;
+    }
+
+    /**
+     * Adds a new lobby server to the network
+     * @since 0.0.1
+     */
+    public void addNewLobbyServer() {
+        int lobbyCount = getLobbyCount() + 1;
+        String serverId = getServerIdOfServerType(ServerType.LOBBY) + (lobbyCount < 10 ? "0" : "") + lobbyCount;
+        addServer(new Server(serverId,"127.0.0.1", "512M", serverId, getMaxPlayersOfServerType(ServerType.LOBBY), ServerType.LOBBY));
     }
 }

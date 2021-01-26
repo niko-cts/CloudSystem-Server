@@ -38,20 +38,17 @@ public class CloudEventsAdmin implements CloudEventListener {
                 break;
             case CloudEvent.ADMIN_REQ_SERVER_SHUTDOWN:
                 Server server = serverHandler.getServerByIdentifier(cloudEvent.getData().get(0).toString());
-                clientHandler.sendDisconnect(server.getServerId());
-                server.stop(true);
-                serverHandler.removeServer(server);
+                serverHandler.shutdownServer(server);
                 break;
             case CloudEvent.ADMIN_REQ_SERVER_CREATE:
                 serverType = (ServerType)cloudEvent.getData().get(0);
                 serverHandler.createServerByServerType(serverType);
                 break;
             case CloudEvent.ADMIN_REQ_SERVER_LIST:
-                List<ServerDefinition> serverDefinitions = serverHandler.generateServerDefinitions();
                 ctx = (ChannelHandlerContext)cloudEvent.getData().get(0);
-                CloudEvent res = new CloudEvent(CloudEvent.ADMIN_RES_SERVER_LIST);
-                res.addData(serverDefinitions);
-                ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(res).toByteArray()));
+                List<ServerDefinition> serverDefinitions = serverHandler.generateServerDefinitions();
+                ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(
+                        new CloudEvent(CloudEvent.ADMIN_RES_SERVER_LIST).addData(serverDefinitions)).toByteArray()));
                 break;
             case CloudEvent.ADMIN_REQ_SERVER_TYPE_SHUTDOWN:
                 serverType = (ServerType)cloudEvent.getData().get(0);

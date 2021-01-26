@@ -4,11 +4,14 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.utils.MessagingUtils;
+import net.fununity.cloud.server.server.Server;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -79,9 +82,8 @@ public class ClientHandler {
      * @param ctx ChannelHandlerContext - the context of the client.
      * @since 0.0.1
      */
-    public void saveClient(String clientId, ChannelHandlerContext ctx){
+    public void saveClient(String clientId, ChannelHandlerContext ctx) {
         this.clients.putIfAbsent(clientId, ctx);
-        LOG.info("Registered client: " + clientId);
         if(clientId.equalsIgnoreCase("CloudBot"))
             this.discordContext = ctx;
         ctx.channel().closeFuture().addListener(channelFuture -> removeClient(ctx));
@@ -138,21 +140,31 @@ public class ClientHandler {
      */
     public void sendDisconnect(String clientId){
         ChannelHandlerContext ctx = this.getClientContext(clientId);
-        if(ctx != null){
+        if (ctx != null){
             ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY)).toByteArray()));
-        }else LOG.warn("CTX of " + clientId + " was null!");
+        } else
+            LOG.warn("CTX of " + clientId + " was null!");
     }
 
     /**
-     * Sends the current lobby count to all known clients.
+     * Sends the current lobby information to all lobbies.
      * @since 0.0.1
      */
-    public void sendLobbyCountToAllClients(){
+    public void sendLobbyInformationToLobbies() {
         CloudEvent cloudEvent = new CloudEvent(CloudEvent.RES_LOBBY_COUNT);
-        cloudEvent.addData(this.serverHandler.getLobbyCount());
-        for(Map.Entry<String, ChannelHandlerContext> entry : this.clients.entrySet()){
-            entry.getValue().writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(cloudEvent).toByteArray()));
+        Map<String, Integer> lobbyInformation = new HashMap<>();
+        for (Server lobbyServer : ServerHandler.getInstance().getLobbyServers()) {
+            lobbyInformation.put(lobbyServer.getServerId(), lobbyServer.getPlayerCount());
         }
+        cloudEvent.addData(lobbyInformation);
+        int i=0;
+        for(Map.Entry<String, ChannelHandlerContext> entry : this.clients.entrySet()) {
+            if(entry.getKey().toLowerCase().contains("lobby") || entry.getKey().toLowerCase().contains("main")) {
+                entry.getValue().writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(cloudEvent).toByteArray()));
+                i++;
+            }
+        }
+        LOG.info("Sent new lobby information to " + i + " server.");
     }
 
     /**

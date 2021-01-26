@@ -7,6 +7,7 @@ import net.fununity.cloud.common.events.cloud.CloudEventListener;
 import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.common.utils.MessagingUtils;
+import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 
@@ -22,35 +23,37 @@ public class CloudEventsRequests implements CloudEventListener {
 
     @Override
     public void newCloudEvent(CloudEvent cloudEvent) {
-        switch(cloudEvent.getId()){
+        switch(cloudEvent.getId()) {
             case CloudEvent.REQ_LOBBY_COUNT:
-                int count = serverHandler.getLobbyCount();
                 CloudEvent event = new CloudEvent(CloudEvent.RES_LOBBY_COUNT);
-                event.addData(count);
-                ChannelHandlerContext ctx = (ChannelHandlerContext)cloudEvent.getData().get(0);
+                event.addData(serverHandler.getLobbyCount());
+                ChannelHandlerContext ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
                 ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(event).toByteArray()));
                 break;
             case CloudEvent.REQ_SERVER_INFO:
                 int port = Integer.parseInt(cloudEvent.getData().get(0).toString());
-                ctx = (ChannelHandlerContext)cloudEvent.getData().get(1);
-                event = new CloudEvent(CloudEvent.RES_SERVER_INFO);
+                ctx = (ChannelHandlerContext) cloudEvent.getData().get(1);
                 clientHandler.remapChannelHandlerContext(ctx, port);
                 ServerDefinition def = serverHandler.getServerDefinitionByPort(port);
-                if(def == null) break;
-                if(serverHandler.getServerDefinitionByPort(port).getServerType() == ServerType.LOBBY)
+                if(def == null) {
+                    CloudServer.getLogger().warn("Server info was requested but definition is null (port: " + port + ")");
+                    break;
+                }
+                if(def.getServerType() == ServerType.LOBBY)
                     serverHandler.sendLobbyQueue();
-                event.addData(serverHandler.getServerDefinitionByPort(port));
+
+                event = new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def);
                 ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(event).toByteArray()));
-                serverHandler.checkStartQueue(def);
+                CloudServer.getLogger().info("Server requested info: " + def.getServerId());
                 break;
             case CloudEvent.REQ_SERVER_SHUTDOWN:
-                if(cloudEvent.getData().size() == 1){
-                    ctx = (ChannelHandlerContext)cloudEvent.getData().get(0);
+                if(cloudEvent.getData().size() == 1) {
+                    ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
                     clientHandler.removeClient(ctx);
-                }else{
+                } else {
                     String serverId = cloudEvent.getData().get(0).toString();
                     ctx = (ChannelHandlerContext)cloudEvent.getData().get(1);
-                    serverHandler.shutdownServer(serverId);
+                    serverHandler.shutdownServer(serverHandler.getServerByIdentifier(serverId));
                 }
                 ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY)).toByteArray()));
                 break;
@@ -63,6 +66,10 @@ public class CloudEventsRequests implements CloudEventListener {
                 break;
             case CloudEvent.REQ_SEND_PLAYER_TO_LOBBY:
                 String serverId = serverHandler.getServerIdOfSuitableLobby();
+                if (serverId.isEmpty()) {
+                    CloudServer.getLogger().warn("No Lobby registered!!");
+                    break;
+                }
                 ChannelHandlerContext bungee = clientHandler.getClientContext("Main");
                 event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER);
                 event.addData(cloudEvent.getData().get(0));
@@ -84,7 +91,7 @@ public class CloudEventsRequests implements CloudEventListener {
             case CloudEvent.REQ_PLAYER_COUNT_NETWORK:
                 res = new CloudEvent(CloudEvent.RES_PLAYER_COUNT_NETWORK);
                 res.addData(serverHandler.getPlayerCountOfNetwork());
-                ctx = (ChannelHandlerContext)cloudEvent.getData().get(1);
+                ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
                 ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(res).toByteArray()));
                 break;
         }

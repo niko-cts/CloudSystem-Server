@@ -43,6 +43,7 @@ public class CloudServer implements Runnable{
         INSTANCE = new CloudServer();
         Thread t = new Thread(INSTANCE);
         t.start();
+        ConfigHandler.getInstance();
     }
 
     public static Logger getLogger(){
@@ -55,10 +56,9 @@ public class CloudServer implements Runnable{
 
     public CloudServer(){
         INSTANCE = this;
-        ConfigHandler.getInstance();
     }
 
-    public void run(){
+    public void run() {
         EventLoopGroup group = new NioEventLoopGroup();
         this.cloudEventManager.addCloudListener(new CloudEvents());
         this.cloudEventManager.addCloudListener(new CloudEventsAdmin());
@@ -66,20 +66,22 @@ public class CloudServer implements Runnable{
         this.cloudEventManager.addCloudListener(new CloudEventsRequests());
         this.discordEventManager.addDiscordListener(new DiscordEvents());
         this.discordEventManager.addDiscordListener(new DiscordEventsRequests());
-        try{
+        try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(group);
             bootstrap.channel(NioServerSocketChannel.class);
-            bootstrap.localAddress(new InetSocketAddress("0.0.0.0", 1337));
+            bootstrap.localAddress(new InetSocketAddress("localhost", 1337));
 
             bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
-                protected void initChannel(SocketChannel socketChannel) throws Exception {
+                protected void initChannel(SocketChannel socketChannel) {
                     socketChannel.pipeline().addLast(new NettyHandler());
+                    System.out.println(System.nanoTime() + "  addLast");
                 }
             });
 
             ChannelFuture channelFuture = bootstrap.bind().sync();
+            System.out.println(System.nanoTime() + "  bind");
             channelFuture.channel().closeFuture().sync();
 
 
