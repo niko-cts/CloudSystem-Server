@@ -9,13 +9,16 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import net.fununity.cloud.common.events.cloud.CloudEventManager;
 import net.fununity.cloud.common.events.discord.DiscordEventManager;
+import net.fununity.cloud.server.command.CloudConsole;
 import net.fununity.cloud.server.listeners.cloud.CloudEvents;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsAdmin;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsCache;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsRequests;
 import net.fununity.cloud.server.listeners.discord.DiscordEvents;
 import net.fununity.cloud.server.listeners.discord.DiscordEventsRequests;
-import net.fununity.cloud.server.misc.*;
+import net.fununity.cloud.server.misc.ClientHandler;
+import net.fununity.cloud.server.misc.ConfigHandler;
+import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.netty.NettyHandler;
 import net.fununity.cloud.server.server.Server;
 import org.apache.log4j.ConsoleAppender;
@@ -44,6 +47,7 @@ public class CloudServer implements Runnable{
         Thread t = new Thread(INSTANCE);
         t.start();
         ConfigHandler.getInstance();
+        CloudConsole.getInstance();
     }
 
     public static Logger getLogger(){
@@ -76,19 +80,15 @@ public class CloudServer implements Runnable{
                 @Override
                 protected void initChannel(SocketChannel socketChannel) {
                     socketChannel.pipeline().addLast(new NettyHandler());
-                    System.out.println(System.nanoTime() + "  addLast");
                 }
             });
 
             ChannelFuture channelFuture = bootstrap.bind().sync();
-            System.out.println(System.nanoTime() + "  bind");
             channelFuture.channel().closeFuture().sync();
-
-
-        }catch(InterruptedException e){
+        } catch(InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.log(Level.WARN, e.getMessage());
-        }finally{
+        } finally {
             group.shutdownGracefully();
         }
     }

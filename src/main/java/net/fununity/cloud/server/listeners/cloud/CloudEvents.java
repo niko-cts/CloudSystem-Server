@@ -1,21 +1,16 @@
 package net.fununity.cloud.server.listeners.cloud;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import net.fununity.cloud.common.events.Event;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.cloud.CloudEventListener;
 import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.common.utils.MessagingUtils;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
-import sun.security.util.AuthResources_it;
 
-import java.sql.SQLOutput;
 import java.util.Vector;
 
 public class CloudEvents implements CloudEventListener {
@@ -41,63 +36,64 @@ public class CloudEvents implements CloudEventListener {
                 serverHandler.addServer(new Server(data.get(0).toString(), data.get(1).toString(), data.get(2).toString(), data.get(3).toString(), Integer.parseInt(data.get(4).toString()), (ServerType)data.get(5)));
                 break;
             case CloudEvent.CLIENT_REGISTER:
-                ctx = (ChannelHandlerContext)cloudEvent.getData().get(cloudEvent.getData().size() == 2 ? 1 : 2);
+                ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
                 clientHandler.saveClient(cloudEvent.getData().get(0).toString(), ctx);
 
-                if(cloudEvent.getData().size() == 2)
+                if(cloudEvent.getData().size() == 2) {
+                    clientHandler.setClientIdToEventSender(ctx, "Main");
                     break;
+                }
 
                 int port = Integer.parseInt(cloudEvent.getData().get(1).toString());
                 clientHandler.remapChannelHandlerContext(ctx, port);
                 ServerDefinition def = serverHandler.getServerDefinitionByPort(port);
+
+                if(def != null)
+                    CloudServer.getLogger().info("Client registered: " + def.getServerId() + "  " + ctx);
+
                 if(def == null || def.getServerType() == ServerType.BUNGEECORD)
                     break;
 
-                CloudServer.getLogger().info("Client registered: " + def.getServerId());
+                ClientHandler.getInstance().addToQueue(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def));
 
                 if(def.getServerType() == ServerType.LOBBY)
-                    serverHandler.sendLobbyQueue();
+                    clientHandler.sendLobbyInformationToLobbies(ctx);
 
-                CloudEvent event = new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def);
-                ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(event).toByteArray()));
                 serverHandler.checkStartQueue(def);
-
+                break;
+            case CloudEvent.EVENT_RECEIVED:
+                ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
+                ClientHandler.getInstance().receiveACK(ctx);
                 break;
             case CloudEvent.FORWARD_TO_BUNGEE:
-                ChannelHandlerContext bungee = clientHandler.getClientContext("Main");
-                if(bungee == null) {
-                    CloudServer.getLogger().warn("BUNGEECORD IS NOT REGISTERED!!!");
-                    break;
-                }
-                bungee.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream((CloudEvent)cloudEvent.getData().get(0)).toByteArray()));
+                serverHandler.sendToBungeeCord((CloudEvent) cloudEvent.getData().get(0));
                 break;
             case CloudEvent.NOTIFY_IDLE:
                 String serverId = cloudEvent.getData().get(0).toString();
                 serverHandler.setServerIdle(serverId);
                 break;
-            case CloudEvent.NOTIFY_PLAYER_JOIN:
+            case CloudEvent.NOTIFY_SERVER_PLAYER_COUNT:
                 serverId = cloudEvent.getData().get(0).toString();
-                serverHandler.increasePlayerCountFromServer(serverId);
-                break;
-            case CloudEvent.NOTIFY_PLAYER_QUIT:
-                serverId = cloudEvent.getData().get(0).toString();
-                serverHandler.reducePlayerCountFromServer(serverId);
+                int playerCount = Integer.parseInt(cloudEvent.getData().get(1).toString());
+                ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
+                serverHandler.setPlayerCountFromServer(serverId, playerCount, ctx);
                 break;
             case CloudEvent.FORWARD_TO_LOBBIES:
-                CloudEvent toForward = (CloudEvent)cloudEvent.getData().get(0);
+                CloudEvent toForward = (CloudEvent) cloudEvent.getData().get(0);
                 if(toForward.getId() == CloudEvent.REQ_FOLLOW_ME) {
                     Server server = serverHandler.getServerByIdentifier(toForward.getData().get(0).toString());
                     toForward = new CloudEvent(CloudEvent.RES_FOLLOW_ME);
                     toForward.addData(serverHandler.getServerDefinitionByPort(server.getServerPort()));
                 }
-                if(toForward.getId() == CloudEvent.STATUS_MINIGAME) {
-                    MinigameHandler.getInstance().receivedStatusUpdate(toForward);
-                }
+
                 for(Server server : serverHandler.getLobbyServers()) {
                     ChannelHandlerContext lobbyContext = clientHandler.getClientContext(server.getServerId());
-                    if(lobbyContext != null)
-                        lobbyContext.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(toForward).toByteArray()));
+                    if (lobbyContext != null)
+                        ClientHandler.getInstance().sendEvent(lobbyContext, toForward);
                 }
+
+                if(toForward.getId() == CloudEvent.STATUS_MINIGAME)
+                    MinigameHandler.getInstance().receivedStatusUpdate(toForward);
                 break;
         }
     }

@@ -23,7 +23,7 @@ public class DiscordEvents implements DiscordEventListener {
     @Override
     public void newDiscordEvent(DiscordEvent discordEvent) {
         Vector data = discordEvent.getData();
-        switch(discordEvent.getId()){
+        switch(discordEvent.getId()) {
             case DiscordEvent.DISCORD_MESSAGE:
                 StringBuilder message = new StringBuilder();
                 message.append("**").append(data.get(0)).append("**").append(" » ").append(data.get(1));

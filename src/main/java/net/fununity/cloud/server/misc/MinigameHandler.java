@@ -9,10 +9,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Handler class for minigame lobby mechanics
@@ -24,8 +21,18 @@ public class MinigameHandler {
     public static final Logger LOG = Logger.getLogger(MinigameHandler.class.getSimpleName());
     private static MinigameHandler instance;
 
-    private final Set<Server> minigames;
-    private final Map<ServerType, Integer> minigameLobbies;
+    /**
+     * Returns a singleton instance of this class
+     * @return MinigameHandler - Instance of {@link MinigameHandler}
+     */
+    public static MinigameHandler getInstance() {
+        if(instance == null)
+            instance = new MinigameHandler();
+        return instance;
+    }
+
+    private final Map<ServerType, Set<Server>> minigameLobbies;
+    private int startingServer;
 
     /**
      * Default constructor of the minigame handler.
@@ -38,47 +45,35 @@ public class MinigameHandler {
         LOG.setLevel(Level.INFO);
         LOG.setAdditivity(false);
         this.minigameLobbies = new EnumMap<>(ServerType.class);
-        this.minigames = new HashSet<>();
+        this.startingServer = 0;
     }
 
     /**
-     * Removes a lobby of a server type and starts a new one if it drops below a defined amount
-     * @param serverType ServerType - The type of Server
+     * Removes a server that left the lobby state
+     * @param server Server - The Server
      */
-    public void removeLobby(ServerType serverType) {
-        int lobbies = minigameLobbies.getOrDefault(serverType, 1) - 1;
-        minigameLobbies.put(serverType, lobbies);
-        checkToCreate(serverType, lobbies);
-    }
-
-    /**
-     * Adds a lobby to a serverType
-     * @param serverType ServerType - The type of Server
-     */
-    public void addLobby(ServerType serverType) {
-        int lobbies = minigameLobbies.getOrDefault(serverType, 0) + 1;
-        minigameLobbies.put(serverType, lobbies);
-    }
-
-    /**
-     * Checks if the server should create another server
-     * @param lobbies int - amount of lobbies
-     */
-    private void checkToCreate(ServerType serverType, int lobbies) {
-        if(lobbies < 2) {
-            CloudServer.getLogger().info("Creating a new " + serverType.name() + " because there are only " + lobbies + " lobbies");
-            ServerHandler.getInstance().createServerByServerType(serverType);
+    public void removeLobby(Server server) {
+        Set<Server> servers = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
+        servers.add(server);
+        minigameLobbies.put(server.getServerType(), servers);
+        if(servers.size() + startingServer < 2) {
+            ServerHandler.getInstance().createServerByServerType(server.getServerType());
+            startingServer++;
         }
     }
 
     /**
-     * Returns a singleton instance of this class
-     * @return MinigameHandler - Instance of {@link MinigameHandler}
+     * Adds a server
+     * @param server Server - The Server
      */
-    public static MinigameHandler getInstance() {
-        if(instance == null)
-            instance = new MinigameHandler();
-        return instance;
+    public void addLobby(Server server) {
+        Set<Server> lobbies = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
+        if(!lobbies.contains(server)) {
+            lobbies.add(server);
+            if(startingServer > 0)
+                startingServer--;
+            minigameLobbies.put(server.getServerType(), lobbies);
+        }
     }
 
     /**
@@ -96,16 +91,15 @@ public class MinigameHandler {
 
         String state = event.getData().get(3).toString();
 
-        if(!minigames.contains(server) && state.equalsIgnoreCase("Lobby")) {
-            addLobby(server.getServerType());
-        } else if(minigames.contains(server) && !state.equalsIgnoreCase("Lobby")) {
-            removeLobby(server.getServerType());
-        }
+        if(state.equalsIgnoreCase("Lobby"))
+            addLobby(server);
+        else
+            removeLobby(server);
 
-        minigames.add(server);
+        CloudServer.getLogger().info("Received minigame update event " + event.getData());
     }
 
     public void removeServer(Server server) {
-        this.minigames.remove(server);
+        this.removeLobby(server);
     }
 }

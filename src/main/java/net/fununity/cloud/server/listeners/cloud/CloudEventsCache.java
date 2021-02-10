@@ -1,13 +1,12 @@
 package net.fununity.cloud.server.listeners.cloud;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.cache.KeyValueCache;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.cloud.CloudEventListener;
 import net.fununity.cloud.common.utils.CacheType;
-import net.fununity.cloud.common.utils.MessagingUtils;
 import net.fununity.cloud.server.misc.CacheHandler;
+import net.fununity.cloud.server.misc.ClientHandler;
 
 public class CloudEventsCache implements CloudEventListener {
 
@@ -19,10 +18,10 @@ public class CloudEventsCache implements CloudEventListener {
                 Object cacheKey = cloudEvent.getData().get(1);
                 Object cacheData = cloudEvent.getData().get(2);
                 CacheHandler cacheHandler = CacheHandler.getInstance();
-                switch(type){
+                switch(type) {
                     case CACHE_PLAYER_DATA:
                         if(!cacheHandler.exists(type))
-                            cacheHandler.addCache(type, new KeyValueCache<String, String>(10*60*1000L));
+                            cacheHandler.addCache(type, new KeyValueCache<String, String>(10 * 60 * 1000L));
                         KeyValueCache<String, String> cache = cacheHandler.getCache(type);
                         cache.put(cacheKey.toString(), cacheData.toString());
                         break;
@@ -33,14 +32,16 @@ public class CloudEventsCache implements CloudEventListener {
                 cacheKey = cloudEvent.getData().get(1);
                 cacheHandler = CacheHandler.getInstance();
                 ChannelHandlerContext ctx = (ChannelHandlerContext)cloudEvent.getData().get(2);
-                switch(type){
+                switch(type) {
                     case CACHE_PLAYER_DATA:
-                        if(cacheHandler.exists(type)){
+                        if(cacheHandler.exists(type)) {
                             KeyValueCache<String, String> cache = cacheHandler.getCache(type);
                             String cacheValue = cache.get(cacheKey.toString());
                             CloudEvent event = new CloudEvent(CloudEvent.RES_CACHE_GET);
+                            event.addData(type);
+                            event.addData(cacheKey);
                             event.addData(cacheValue);
-                            ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(event).toByteArray()));
+                            ClientHandler.getInstance().addToQueue(ctx, event);
                         }
                         break;
                 }

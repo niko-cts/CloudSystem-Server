@@ -1,12 +1,10 @@
 package net.fununity.cloud.server.listeners.cloud;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.cloud.CloudEventListener;
 import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.common.utils.MessagingUtils;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
@@ -28,9 +26,9 @@ public class CloudEventsAdmin implements CloudEventListener {
 
     @Override
     public void newCloudEvent(CloudEvent cloudEvent) {
-        ServerType serverType = null;
-        String serverId = "";
-        ChannelHandlerContext ctx = null;
+        ServerType serverType;
+        String serverId;
+        ChannelHandlerContext ctx;
 
         switch(cloudEvent.getId()){
             case CloudEvent.ADMIN_REQ_CLOUD_SHUTDOWN:
@@ -47,8 +45,7 @@ public class CloudEventsAdmin implements CloudEventListener {
             case CloudEvent.ADMIN_REQ_SERVER_LIST:
                 ctx = (ChannelHandlerContext)cloudEvent.getData().get(0);
                 List<ServerDefinition> serverDefinitions = serverHandler.generateServerDefinitions();
-                ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(
-                        new CloudEvent(CloudEvent.ADMIN_RES_SERVER_LIST).addData(serverDefinitions)).toByteArray()));
+                ClientHandler.getInstance().sendEvent(ctx, new CloudEvent(CloudEvent.ADMIN_RES_SERVER_LIST).addData(serverDefinitions));
                 break;
             case CloudEvent.ADMIN_REQ_SERVER_TYPE_SHUTDOWN:
                 serverType = (ServerType)cloudEvent.getData().get(0);

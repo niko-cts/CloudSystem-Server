@@ -51,19 +51,19 @@ public class ConfigHandler {
     private File configFile;
     private final Logger logger = Logger.getLogger(ConfigHandler.class);
 
-    private ConfigHandler(){
+    private ConfigHandler() {
         logger.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
         logger.setAdditivity(false);
         logger.setLevel(Level.INFO);
-        try{
+        try {
             this.configFile = new File("config.xml");
-            if(!this.configFile.exists()){
+            if(!this.configFile.exists()) {
                 boolean newFile = this.configFile.createNewFile();
                 if(newFile)
                     this.loadDefaultConfiguration();
             }
             this.loadDefaultServers();
-        }catch(IOException e){
+        } catch(IOException e) {
             logger.warn(e.getMessage());
         }
     }

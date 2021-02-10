@@ -3,7 +3,6 @@ package net.fununity.cloud.server.server;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -68,7 +67,7 @@ public final class Server {
      * @author Marco Hajek
      */
     public Server(String serverId, String serverIp, int serverPort, String maxRam, String motd, int maxPlayers, ServerType serverType) {
-        if(!LOG_CONFIGURED){
+        if(!LOG_CONFIGURED) {
             LOG.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
             LOG.setAdditivity(false);
             LOG.setLevel(Level.INFO);
@@ -200,31 +199,17 @@ public final class Server {
     /**
      * Adds the amount of players by one.
      * Creates new lobby if player count of lobby goes above 20
+     * @param playerCount int - The amount of players on this server
      * @since 0.0.1
      */
-    public void playerJoined() {
-        playerCount++;
+    public void setPlayerCount(int playerCount) {
+        this.playerCount = playerCount;
         if(serverType == ServerType.LOBBY) {
             if(playerCount >= (maxPlayers - (maxPlayers/10))) {
                 ServerHandler.getInstance().addNewLobbyServer();
-            } else {
-                ClientHandler.getInstance().sendLobbyInformationToLobbies();
-            }
-        }
-    }
-
-    /**
-     * Reduces the amount of player by one.
-     * Removes the server if it's a empty lobby
-     * @since 0.0.1
-     */
-    public void playerLeft() {
-        playerCount--;
-        if(serverType == ServerType.LOBBY) {
+            } else
             if(playerCount == 0 && ServerHandler.getInstance().getLobbyCount() > 2) {
                 ServerHandler.getInstance().shutdownServer(this);
-            } else {
-                ClientHandler.getInstance().sendLobbyInformationToLobbies();
             }
         }
     }
@@ -382,7 +367,7 @@ public final class Server {
             return;
         }
 
-        try{
+        try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
@@ -399,9 +384,9 @@ public final class Server {
      * @param content File - the file to be deleted.
      * @since 0.0.1
      */
-    private void deleteServerContent(File content){
+    private void deleteServerContent(File content) {
         File[] allContents = content.listFiles();
-        if(allContents != null){
+        if(allContents != null) {
             for(File file : allContents){
                 deleteServerContent(file);
             }

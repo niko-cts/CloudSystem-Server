@@ -14,7 +14,7 @@ import java.util.HashMap;
 public class CacheHandler {
 
     private static CacheHandler instance;
-    private HashMap<CacheType, KeyValueCache> caches;
+    private final HashMap<CacheType, KeyValueCache> caches;
 
     private CacheHandler(){
         caches = new HashMap<>();
