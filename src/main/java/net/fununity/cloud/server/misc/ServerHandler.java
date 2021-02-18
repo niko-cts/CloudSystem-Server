@@ -194,7 +194,7 @@ public class ServerHandler {
         if(!allServerOfType)
             MinigameHandler.getInstance().removeServer(server);
         if (server.getServerType() == ServerType.LOBBY) {
-            this.clientHandler.sendLobbyInformationToLobbies(null);
+            this.clientHandler.sendLobbyInformationToLobbies();
         }
     }
 
@@ -414,7 +414,6 @@ public class ServerHandler {
     public void sendToBungeeCord(CloudEvent event) {
         for(Server server : getBungeeServers()) {
             ChannelHandlerContext ctx = this.clientHandler.getClientContext(server.getServerId());
-
             if(ctx != null) {
                 ClientHandler.getInstance().sendEvent(ctx, event);
             }
@@ -466,18 +465,17 @@ public class ServerHandler {
      * Finds the server by server identifier and executes the playerJoined() method in specified Server.
      * @param serverID String - Identifier of Server
      * @param playerCount int - The amount of players on the server
-     * @param ctx ChannelHandlerContext - The channel that sent the request
      * @see Server#setPlayerCount(int)
      * @since 0.0.1
      */
-    public void setPlayerCountFromServer(String serverID, int playerCount, ChannelHandlerContext ctx) {
+    public void setPlayerCountFromServer(String serverID, int playerCount) {
         Server server = getServerByIdentifier(serverID);
         if(server == null) {
             return;
         }
         server.setPlayerCount(playerCount);
         if(server.getServerType() == ServerType.LOBBY)
-            ClientHandler.getInstance().sendLobbyInformationToLobbies(ctx);
+            ClientHandler.getInstance().sendLobbyInformationToLobbies();
     }
 
     /**

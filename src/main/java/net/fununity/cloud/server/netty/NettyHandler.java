@@ -4,7 +4,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import net.fununity.cloud.common.events.Event;
-import net.fununity.cloud.common.events.ResendEvent;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.discord.DiscordEvent;
 import net.fununity.cloud.common.utils.MessagingUtils;
@@ -12,10 +11,18 @@ import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
 
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 public class NettyHandler extends ChannelInboundHandlerAdapter {
 
     private int nullTimes = 0;
+    private final Set<UUID> receivedEvents;
+
+    public NettyHandler() {
+        this.receivedEvents = new HashSet<>();
+    }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -29,48 +36,53 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
 
         Event e = MessagingUtils.convertStreamToEvent(inBuf);
 
-        ClientHandler.getInstance().openChannel(ctx);
-
         if(e == null) {
-            System.err.println(getMin() + (nullTimes++) + " NULL EVENT received from " + ClientHandler.getInstance().getClientId(ctx));
-            ClientHandler.getInstance().sendEvent(ctx, new ResendEvent());
+            nullTimes++;
+            System.err.println(getPrefix() + nullTimes + " NULL EVENT received from " + ClientHandler.getInstance().getClientId(ctx) + " " + System.currentTimeMillis());
+            ClientHandler.getInstance().sendResendEvent(ctx);
             return;
         }
 
-        if(e instanceof ResendEvent) {
-            ClientHandler.getInstance().resendEvent(ctx);
+        if(receivedEvents.contains(e.getUniqueId()))
             return;
-        }
+        this.receivedEvents.add(e.getUniqueId());
+
+        ClientHandler.getInstance().closeChannel(ctx);
+
         if (e instanceof CloudEvent) {
             CloudEvent event = (CloudEvent) e;
-            System.out.println(getMin() + "Received " + event + " from " + ClientHandler.getInstance().getClientId(ctx));
+
+            switch (event.getId()) {
+                case CloudEvent.CLOUD_RESEND_REQUEST:
+                    ClientHandler.getInstance().resendLastEvent(ctx);
+                    return;
+                case CloudEvent.CLOUD_QUEUE_EMPTY:
+                    ClientHandler.getInstance().receiverQueueEmptied(ctx);
+                    break;
+                default:
+                    break;
+            }
+
+            System.out.println(getPrefix() + ClientHandler.getInstance().getClientId(ctx) + " | Received " + event );
             event.addData(ctx);
             CloudServer.getInstance().getCloudEventManager().fireCloudEvent(event);
-
-            if(!e.needACK())
-                return;
-
         } else if (e instanceof DiscordEvent) {
             DiscordEvent event = (DiscordEvent) e;
-            CloudServer.getLogger().info(getMin() + "Received " + event);
+            CloudServer.getLogger().info(getPrefix() + "Received " + event);
             CloudServer.getInstance().getDiscordEventManager().fireDiscordEvent(event);
-
-            if(!e.needACK())
-                return;
         }
 
-        if(!ClientHandler.getInstance().receiveACK(ctx))
-            ClientHandler.getInstance().sendEvent(ctx, new CloudEvent(CloudEvent.EVENT_RECEIVED).setNeedACK(false));
-    }
-
-    private static String getMin() {
-        OffsetDateTime now = OffsetDateTime.now();
-        return "[" + now.getHour() + ":" + now.getMinute() + ":" + now.getSecond() + "] - ";
+        ClientHandler.getInstance().openChannel(ctx);
     }
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
         // not needed
+    }
+
+    private static String getPrefix() {
+        OffsetDateTime now = OffsetDateTime.now();
+        return "[" + now.getHour() + ":" + now.getMinute() + ":" + now.getSecond() + "] - ";
     }
 
     @Override

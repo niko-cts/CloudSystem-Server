@@ -54,16 +54,12 @@ public class CloudEvents implements CloudEventListener {
                 if(def == null || def.getServerType() == ServerType.BUNGEECORD)
                     break;
 
-                ClientHandler.getInstance().addToQueue(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def));
+                clientHandler.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def));
 
                 if(def.getServerType() == ServerType.LOBBY)
-                    clientHandler.sendLobbyInformationToLobbies(ctx);
+                    clientHandler.sendLobbyInformationToLobbies();
 
                 serverHandler.checkStartQueue(def);
-                break;
-            case CloudEvent.EVENT_RECEIVED:
-                ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
-                ClientHandler.getInstance().receiveACK(ctx);
                 break;
             case CloudEvent.FORWARD_TO_BUNGEE:
                 serverHandler.sendToBungeeCord((CloudEvent) cloudEvent.getData().get(0));
@@ -75,8 +71,7 @@ public class CloudEvents implements CloudEventListener {
             case CloudEvent.NOTIFY_SERVER_PLAYER_COUNT:
                 serverId = cloudEvent.getData().get(0).toString();
                 int playerCount = Integer.parseInt(cloudEvent.getData().get(1).toString());
-                ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
-                serverHandler.setPlayerCountFromServer(serverId, playerCount, ctx);
+                serverHandler.setPlayerCountFromServer(serverId, playerCount);
                 break;
             case CloudEvent.FORWARD_TO_LOBBIES:
                 CloudEvent toForward = (CloudEvent) cloudEvent.getData().get(0);
@@ -89,7 +84,7 @@ public class CloudEvents implements CloudEventListener {
                 for(Server server : serverHandler.getLobbyServers()) {
                     ChannelHandlerContext lobbyContext = clientHandler.getClientContext(server.getServerId());
                     if (lobbyContext != null)
-                        ClientHandler.getInstance().sendEvent(lobbyContext, toForward);
+                        clientHandler.sendEvent(lobbyContext, toForward);
                 }
 
                 if(toForward.getId() == CloudEvent.STATUS_MINIGAME)

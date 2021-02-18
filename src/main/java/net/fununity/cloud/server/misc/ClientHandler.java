@@ -2,7 +2,6 @@ package net.fununity.cloud.server.misc;
 
 import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.events.Event;
-import net.fununity.cloud.common.events.EventPriority;
 import net.fununity.cloud.common.events.EventSendingManager;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.server.server.Server;
@@ -155,19 +154,16 @@ public class ClientHandler {
     public void sendDisconnect(String clientId) {
         ChannelHandlerContext ctx = this.getClientContext(clientId);
         if (ctx != null) {
-            this.addToQueue(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY).setEventPriority(EventPriority.HIGH));
-            this.receiveACK(ctx);
+            this.sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
         } else
             LOG.warn("CTX of " + clientId + " was null!");
     }
 
     /**
      * Sends the current lobby information to all lobbies.
-     *
-     * @param ctx ChannelHandlerContext - The channel that sent the request
      * @since 0.0.1
      */
-    public void sendLobbyInformationToLobbies(ChannelHandlerContext ctx) {
+    public void sendLobbyInformationToLobbies() {
         CloudEvent cloudEvent = new CloudEvent(CloudEvent.RES_LOBBY_INFOS);
         Map<String, Integer> lobbyInformation = new HashMap<>();
         for (Server lobbyServer : ServerHandler.getInstance().getLobbyServers()) {
@@ -176,11 +172,7 @@ public class ClientHandler {
         cloudEvent.addData(lobbyInformation);
         for (Map.Entry<String, ChannelHandlerContext> entry : this.clients.entrySet()) {
             if (entry.getKey().toLowerCase().contains("lobby") || entry.getKey().toLowerCase().contains("main")) {
-                if (entry.getValue() == ctx) {
-                    this.addToQueue(entry.getValue(), cloudEvent);
-                } else {
-                    this.sendEvent(entry.getValue(), cloudEvent);
-                }
+                this.sendEvent(entry.getValue(), cloudEvent);
             }
         }
     }
@@ -189,17 +181,18 @@ public class ClientHandler {
 
     /**
      * Sends an event to the specified CTX
-     *
      * @param ctx   ChannelHandlerContext - Channel to send
      * @param event {@link CloudEvent} - Event to send
      * @since 0.0.1
      */
     public void sendEvent(ChannelHandlerContext ctx, Event event) {
-        senderMap.get(ctx).sendEvent(event.clone());
+        if (this.senderMap.containsKey(ctx))
+            this.senderMap.get(ctx).sendEvent(event.clone());
     }
 
-    public void addToQueue(ChannelHandlerContext ctx, Event event) {
-        senderMap.get(ctx).addQueue(event.clone());
+    public void sendResendEvent(ChannelHandlerContext ctx) {
+        if (this.senderMap.containsKey(ctx))
+            this.senderMap.get(ctx).sendResendEvent();
     }
 
     public void openChannel(ChannelHandlerContext ctx) {
@@ -218,7 +211,6 @@ public class ClientHandler {
     /**
      * Gets the {@link io.netty.channel.ChannelHandlerContext} of the discord bot.
      * Could be null if the bot is not registered.
-     *
      * @return the ChannelHandlerContext of the bot.
      * @since 0.0.1
      */
@@ -230,18 +222,12 @@ public class ClientHandler {
         senderMap.put(ctx, new EventSendingManager(ctx));
     }
 
-    public boolean receiveACK(ChannelHandlerContext ctx) {
-        if (this.senderMap.containsKey(ctx))
-            return senderMap.get(ctx).receiveACK();
-        return false;
-    }
-
     public void setClientIdToEventSender(ChannelHandlerContext ctx, String main) {
         if(this.senderMap.containsKey(ctx))
             senderMap.get(ctx).setClientID(main);
     }
 
-    public void resendEvent(ChannelHandlerContext ctx) {
+    public void resendLastEvent(ChannelHandlerContext ctx) {
         if(this.senderMap.containsKey(ctx))
             senderMap.get(ctx).resendEvent();
     }
@@ -251,4 +237,22 @@ public class ClientHandler {
         return clientId != null ? serverHandler.getServerByIdentifier(clientId) : null;
     }
 
+    /**
+     * Will call {@link EventSendingManager#needNoAnswer()}
+     * @param ctx ChannelHandlerContext - The channel.
+     * @since 0.0.1
+     */
+    public void receiverQueueEmptied(ChannelHandlerContext ctx) {
+        if(this.senderMap.containsKey(ctx))
+            senderMap.get(ctx).needNoAnswer();
+    }
+    /**
+     * Closes the channel
+     * @param ctx ChannelHandlerContext - The channel.
+     * @since 0.0.1
+     */
+    public void closeChannel(ChannelHandlerContext ctx) {
+        if(this.senderMap.containsKey(ctx))
+            senderMap.get(ctx).closeChannel();
+    }
 }

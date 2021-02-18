@@ -16,42 +16,41 @@ public class CloudEventsRequests implements CloudEventListener {
     private final ClientHandler clientHandler;
     private final ServerHandler serverHandler;
 
-    public CloudEventsRequests(){
+    public CloudEventsRequests() {
         clientHandler = ClientHandler.getInstance();
         serverHandler = ServerHandler.getInstance();
     }
 
     @Override
     public void newCloudEvent(CloudEvent cloudEvent) {
-        switch(cloudEvent.getId()) {
+        switch (cloudEvent.getId()) {
             case CloudEvent.REQ_LOBBY_COUNT:
                 CloudEvent event = new CloudEvent(CloudEvent.RES_LOBBY_INFOS);
                 event.addData(serverHandler.getLobbyCount());
                 ChannelHandlerContext ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
-                ClientHandler.getInstance().addToQueue(ctx, event);
+                ClientHandler.getInstance().sendEvent(ctx, event);
                 break;
             case CloudEvent.REQ_SERVER_INFO:
                 int port = Integer.parseInt(cloudEvent.getData().get(0).toString());
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(1);
                 clientHandler.remapChannelHandlerContext(ctx, port);
                 ServerDefinition def = serverHandler.getServerDefinitionByPort(port);
-                if(def == null) {
+                if (def == null) {
                     CloudServer.getLogger().warn("Server info was requested but definition is null (port: " + port + ")");
                     break;
                 }
 
                 event = new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def);
-                ClientHandler.getInstance().addToQueue(ctx, event);
+                ClientHandler.getInstance().sendEvent(ctx, event);
                 CloudServer.getLogger().info("Server requested info: " + def.getServerId());
                 break;
             case CloudEvent.REQ_SERVER_SHUTDOWN:
-                if(cloudEvent.getData().size() == 1) {
+                if (cloudEvent.getData().size() == 1) {
                     ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
                     clientHandler.removeClient(ctx);
-                    ClientHandler.getInstance().addToQueue(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
+                    ClientHandler.getInstance().sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
                 } else {
                     String serverId = cloudEvent.getData().get(0).toString();
-                    cloudEvent.setNeedACK(false);
                     serverHandler.shutdownServer(serverHandler.getServerByIdentifier(serverId));
                 }
                 break;
@@ -60,7 +59,7 @@ public class CloudEventsRequests implements CloudEventListener {
                 event = new CloudEvent(CloudEvent.RES_SERVER_TYPE);
                 event.addData(serverType);
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(1);
-                ClientHandler.getInstance().addToQueue(ctx, event);
+                ClientHandler.getInstance().sendEvent(ctx, event);
                 break;
             case CloudEvent.REQ_SEND_PLAYER_TO_LOBBY:
                 String serverId = serverHandler.getServerIdOfSuitableLobby();
@@ -68,12 +67,15 @@ public class CloudEventsRequests implements CloudEventListener {
                     CloudServer.getLogger().warn("No Lobby registered!!");
                     break;
                 }
+
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
                 event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER);
-                event.addData(cloudEvent.getData().get(0));
                 event.addData(serverId);
-                if(clientHandler.getServerFromCTX(ctx).getServerType() == ServerType.BUNGEECORD)
-                    ClientHandler.getInstance().addToQueue(ctx, event);
+                for (int i = 0; i < cloudEvent.getData().size() - 1; i++)
+                    event.addData(cloudEvent.getData().get(0));
+
+                if (clientHandler.getServerFromCTX(ctx).getServerType() == ServerType.BUNGEECORD)
+                    ClientHandler.getInstance().sendEvent(ctx, event);
                 else
                     serverHandler.sendToBungeeCord(event);
                 break;
@@ -81,19 +83,19 @@ public class CloudEventsRequests implements CloudEventListener {
                 event = new CloudEvent(CloudEvent.RES_PLAYER_COUNT_SERVER);
                 event.addData(serverHandler.getPlayerCountOfServer(cloudEvent.getData().get(0).toString()));
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(1);
-                ClientHandler.getInstance().addToQueue(ctx, event);
+                ClientHandler.getInstance().sendEvent(ctx, event);
                 break;
             case CloudEvent.REQ_PLAYER_COUNT_TYPE:
                 event = new CloudEvent(CloudEvent.RES_PLAYER_COUNT_TYPE);
                 event.addData(serverHandler.getPlayerCountOfServerType((ServerType) cloudEvent.getData().get(0)));
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(1);
-                ClientHandler.getInstance().addToQueue(ctx, event);
+                ClientHandler.getInstance().sendEvent(ctx, event);
                 break;
             case CloudEvent.REQ_PLAYER_COUNT_NETWORK:
                 event = new CloudEvent(CloudEvent.RES_PLAYER_COUNT_NETWORK);
                 event.addData(serverHandler.getPlayerCountOfNetwork());
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
-                ClientHandler.getInstance().addToQueue(ctx, event);
+                ClientHandler.getInstance().sendEvent(ctx, event);
                 break;
             case CloudEvent.NOTIFY_NETWORK_PLAYER_COUNT:
                 serverHandler.setPlayerCountOfNetwork(Integer.parseInt(cloudEvent.getData().get(0).toString()));
@@ -101,7 +103,7 @@ public class CloudEventsRequests implements CloudEventListener {
                 event.setEventPriority(EventPriority.LOW);
                 event.addData(serverHandler.getPlayerCountOfNetwork());
 
-                for(Server server : serverHandler.getLobbyServers()) {
+                for (Server server : serverHandler.getLobbyServers()) {
                     ChannelHandlerContext lobbyContext = clientHandler.getClientContext(server.getServerId());
                     if (lobbyContext != null)
                         ClientHandler.getInstance().sendEvent(lobbyContext, event);

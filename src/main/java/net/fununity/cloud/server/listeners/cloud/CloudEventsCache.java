@@ -12,15 +12,15 @@ public class CloudEventsCache implements CloudEventListener {
 
     @Override
     public void newCloudEvent(CloudEvent cloudEvent) {
-        switch(cloudEvent.getId()){
+        switch (cloudEvent.getId()) {
             case CloudEvent.REQ_CACHE_ADD:
-                CacheType type = (CacheType)cloudEvent.getData().get(0);
+                CacheType type = (CacheType) cloudEvent.getData().get(0);
                 Object cacheKey = cloudEvent.getData().get(1);
                 Object cacheData = cloudEvent.getData().get(2);
                 CacheHandler cacheHandler = CacheHandler.getInstance();
-                switch(type) {
+                switch (type) {
                     case CACHE_PLAYER_DATA:
-                        if(!cacheHandler.exists(type))
+                        if (!cacheHandler.exists(type))
                             cacheHandler.addCache(type, new KeyValueCache<String, String>(10 * 60 * 1000L));
                         KeyValueCache<String, String> cache = cacheHandler.getCache(type);
                         cache.put(cacheKey.toString(), cacheData.toString());
@@ -28,20 +28,23 @@ public class CloudEventsCache implements CloudEventListener {
                 }
                 break;
             case CloudEvent.REQ_CACHE_GET:
-                type = (CacheType)cloudEvent.getData().get(0);
-                cacheKey = cloudEvent.getData().get(1);
+                type = (CacheType) cloudEvent.getData().get(0);
                 cacheHandler = CacheHandler.getInstance();
-                ChannelHandlerContext ctx = (ChannelHandlerContext)cloudEvent.getData().get(2);
-                switch(type) {
+                switch (type) {
                     case CACHE_PLAYER_DATA:
-                        if(cacheHandler.exists(type)) {
-                            KeyValueCache<String, String> cache = cacheHandler.getCache(type);
-                            String cacheValue = cache.get(cacheKey.toString());
+                        if (cacheHandler.exists(type)) {
                             CloudEvent event = new CloudEvent(CloudEvent.RES_CACHE_GET);
                             event.addData(type);
-                            event.addData(cacheKey);
-                            event.addData(cacheValue);
-                            ClientHandler.getInstance().addToQueue(ctx, event);
+
+                            KeyValueCache<String, String> cache = cacheHandler.getCache(type);
+                            for (int i = 1; i < cloudEvent.getData().size() - 1; i++) {
+                                cacheKey = cloudEvent.getData().get(i);
+                                String cacheValue = cache.get(cacheKey.toString());
+                                event.addData(cacheKey);
+                                event.addData(cacheValue);
+                            }
+                            ChannelHandlerContext ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
+                            ClientHandler.getInstance().sendEvent(ctx, event);
                         }
                         break;
                 }
