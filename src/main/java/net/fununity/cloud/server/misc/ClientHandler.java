@@ -153,9 +153,9 @@ public class ClientHandler {
      */
     public void sendDisconnect(String clientId) {
         ChannelHandlerContext ctx = this.getClientContext(clientId);
-        if (ctx != null) {
+        if (ctx != null)
             this.sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
-        } else
+        else
             LOG.warn("CTX of " + clientId + " was null!");
     }
 
@@ -190,16 +190,32 @@ public class ClientHandler {
             this.senderMap.get(ctx).sendEvent(event.clone());
     }
 
+    /**
+     * Sends resend event to the given ctx.
+     * @param ctx ChannelHandlerContext - the channel to send the resend request
+     * @since 0.0.1
+     */
     public void sendResendEvent(ChannelHandlerContext ctx) {
         if (this.senderMap.containsKey(ctx))
             this.senderMap.get(ctx).sendResendEvent();
     }
 
+    /**
+     * Opens channel.
+     * @param ctx ChannelHandlerContext - the channel
+     * @since 0.0.1
+     */
     public void openChannel(ChannelHandlerContext ctx) {
         if (this.senderMap.containsKey(ctx))
             this.senderMap.get(ctx).openChannel();
     }
 
+    /**
+     * Get the client Id from the ctx
+     * @param ctx ChannelHandlerContext - the channel
+     * @return String - the id of the client
+     * @since 0.0.1
+     */
     public String getClientId(ChannelHandlerContext ctx) {
         for (Map.Entry<String, ChannelHandlerContext> entry : getClients().entrySet()) {
             if (entry.getValue() == ctx)

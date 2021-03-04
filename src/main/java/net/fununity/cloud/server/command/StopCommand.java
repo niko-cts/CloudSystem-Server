@@ -30,6 +30,7 @@ public class StopCommand extends Command {
             sendIllegalServerId(args[0]);
             return;
         }
-        ServerHandler.getInstance().shutdownServer(server, false);
+        log.info("Shutting down " + server.getServerId());
+        ServerHandler.getInstance().shutdownServer(server);
     }
 }

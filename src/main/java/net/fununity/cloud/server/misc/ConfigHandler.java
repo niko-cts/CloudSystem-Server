@@ -144,7 +144,7 @@ public class ConfigHandler {
      * Loads the default servers from the config and adds the to the cloud.
      * @since 0.0.1
      */
-    public void loadDefaultServers(){
+    public void loadDefaultServers() {
         try {
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             dbFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
@@ -170,7 +170,7 @@ public class ConfigHandler {
             }
             // Niko change: moved under for loop, because when other servers are created
             // the starting server won't send the cloud event properly
-            serverToStart.forEach(s-> ServerHandler.getInstance().addServer(s));
+            serverToStart.forEach(s -> ServerHandler.getInstance().addServer(s));
         } catch (ParserConfigurationException | SAXException | IOException e) {
             logger.warn(e.getMessage());
         }

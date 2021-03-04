@@ -49,7 +49,7 @@ public class CloudEvents implements CloudEventListener {
                 ServerDefinition def = serverHandler.getServerDefinitionByPort(port);
 
                 if(def != null)
-                    CloudServer.getLogger().info("Client registered: " + def.getServerId() + "  " + ctx);
+                    CloudServer.getLogger().info("Client registered: " + def.getServerId());
 
                 if(def == null || def.getServerType() == ServerType.BUNGEECORD)
                     break;

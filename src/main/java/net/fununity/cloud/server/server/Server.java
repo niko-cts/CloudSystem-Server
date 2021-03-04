@@ -319,6 +319,9 @@ public final class Server {
             case LANDSCAPES:
                 path.append("Landscapes/");
                 break;
+            case FREEBUILD:
+                path.append("FreeBuild/");
+                break;
             default:
                 LOG.warn("Could not create template path for " + this.serverId + "! ServerType is not supported.");
         }
@@ -371,9 +374,8 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            if(this.serverType != ServerType.LANDSCAPES && delete) {
+            if (this.serverType != ServerType.LANDSCAPES && this.serverType != ServerType.FREEBUILD && delete)
                 deleteServerContent(Paths.get(this.serverPath).toFile());
-            }
         }catch(IOException e){
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
         }

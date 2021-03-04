@@ -185,7 +185,7 @@ public class ServerHandler {
      * @param allServerOfType boolean - All server shut down
      * @since 0.0.1
      */
-    public void shutdownServer(Server server, boolean allServerOfType) {
+    private void shutdownServer(Server server, boolean allServerOfType) {
         if(server == null) return;
         this.clientHandler.sendDisconnect(server.getServerId());
         this.clientHandler.removeClient(server.getServerId());
@@ -193,9 +193,8 @@ public class ServerHandler {
         server.stop(true);
         if(!allServerOfType)
             MinigameHandler.getInstance().removeServer(server);
-        if (server.getServerType() == ServerType.LOBBY) {
+        if (server.getServerType() == ServerType.LOBBY)
             this.clientHandler.sendLobbyInformationToLobbies();
-        }
     }
 
     /**
@@ -286,6 +285,8 @@ public class ServerHandler {
                 return "PTS";
             case LANDSCAPES:
                 return "LandScapes";
+            case FREEBUILD:
+                return "FreeBuild";
         }
         return "";
     }
@@ -295,6 +296,7 @@ public class ServerHandler {
             case BUNGEECORD:
                 return 120;
             case LANDSCAPES:
+            case FREEBUILD:
                 return 50;
             default:
                 return 30;
@@ -412,9 +414,9 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void sendToBungeeCord(CloudEvent event) {
-        for(Server server : getBungeeServers()) {
+        for (Server server : getBungeeServers()) {
             ChannelHandlerContext ctx = this.clientHandler.getClientContext(server.getServerId());
-            if(ctx != null) {
+            if (ctx != null) {
                 ClientHandler.getInstance().sendEvent(ctx, event);
             }
         }

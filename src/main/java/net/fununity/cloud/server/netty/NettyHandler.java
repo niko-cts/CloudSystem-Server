@@ -9,19 +9,25 @@ import net.fununity.cloud.common.events.discord.DiscordEvent;
 import net.fununity.cloud.common.utils.MessagingUtils;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 
-import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 public class NettyHandler extends ChannelInboundHandlerAdapter {
 
-    private int nullTimes = 0;
-    private final Set<UUID> receivedEvents;
+    private static final Logger LOG = Logger.getLogger(NettyHandler.class.getName());
+    private final Set<Long> receivedEvents;
 
     public NettyHandler() {
         this.receivedEvents = new HashSet<>();
+        PatternLayout layout = new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n");
+        LOG.addAppender(new ConsoleAppender(layout));
+        LOG.setLevel(Level.INFO);
+        LOG.setAdditivity(false);
     }
 
     @Override
@@ -34,25 +40,32 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         ByteBuf inBuf = (ByteBuf) msg;
 
-        Event e = MessagingUtils.convertStreamToEvent(inBuf);
+        Event event = MessagingUtils.convertStreamToEvent(inBuf);
 
-        if(e == null) {
-            nullTimes++;
-            System.err.println(getPrefix() + nullTimes + " NULL EVENT received from " + ClientHandler.getInstance().getClientId(ctx) + " " + System.currentTimeMillis());
+        if(event == null) {
+            LOG.warn(ClientHandler.getInstance().getClientId(ctx) + " | Received null event");
             ClientHandler.getInstance().sendResendEvent(ctx);
             return;
         }
 
-        if(receivedEvents.contains(e.getUniqueId()))
+
+        if (receivedEvents.contains(event.getUniqueId())) {
+            LOG.warn(ClientHandler.getInstance().getClientId(ctx) + " | " + event.toString() + " event already received!");
+            ClientHandler.getInstance().openChannel(ctx);
             return;
-        this.receivedEvents.add(e.getUniqueId());
+        }
+
+        this.receivedEvents.add(event.getUniqueId());
 
         ClientHandler.getInstance().closeChannel(ctx);
 
-        if (e instanceof CloudEvent) {
-            CloudEvent event = (CloudEvent) e;
 
-            switch (event.getId()) {
+        if (event instanceof CloudEvent) {
+            CloudEvent cloudEvent = (CloudEvent) event;
+
+            LOG.info(ClientHandler.getInstance().getClientId(ctx) + " | Received " + cloudEvent );
+
+            switch (cloudEvent.getId()) {
                 case CloudEvent.CLOUD_RESEND_REQUEST:
                     ClientHandler.getInstance().resendLastEvent(ctx);
                     return;
@@ -60,29 +73,23 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
                     ClientHandler.getInstance().receiverQueueEmptied(ctx);
                     break;
                 default:
-                    break;
+                    cloudEvent.addData(ctx);
+                    CloudServer.getInstance().getCloudEventManager().fireCloudEvent(cloudEvent);
             }
 
-            System.out.println(getPrefix() + ClientHandler.getInstance().getClientId(ctx) + " | Received " + event );
-            event.addData(ctx);
-            CloudServer.getInstance().getCloudEventManager().fireCloudEvent(event);
-        } else if (e instanceof DiscordEvent) {
-            DiscordEvent event = (DiscordEvent) e;
-            CloudServer.getLogger().info(getPrefix() + "Received " + event);
-            CloudServer.getInstance().getDiscordEventManager().fireDiscordEvent(event);
+        } else if (event instanceof DiscordEvent) {
+            DiscordEvent discordEvent = (DiscordEvent) event;
+            LOG.info("Received " + discordEvent);
+            CloudServer.getInstance().getDiscordEventManager().fireDiscordEvent(discordEvent);
         }
 
+        ctx.flush();
         ClientHandler.getInstance().openChannel(ctx);
     }
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
         // not needed
-    }
-
-    private static String getPrefix() {
-        OffsetDateTime now = OffsetDateTime.now();
-        return "[" + now.getHour() + ":" + now.getMinute() + ":" + now.getSecond() + "] - ";
     }
 
     @Override

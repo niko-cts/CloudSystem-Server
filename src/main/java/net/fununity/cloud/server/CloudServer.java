@@ -28,7 +28,6 @@ import org.apache.log4j.PatternLayout;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Scanner;
 
 public class CloudServer implements Runnable{
 

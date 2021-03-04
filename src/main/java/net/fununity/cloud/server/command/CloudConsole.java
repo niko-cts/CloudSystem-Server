@@ -6,7 +6,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 /**
@@ -56,13 +55,10 @@ public class CloudConsole {
      * @since 0.0.1
      */
     private void run() {
-        while(!exit) {
-            try(Scanner scanner = new Scanner(System.in)) {
-                String input = scanner.nextLine();
-                this.commandHandler.tryToExecuteCommand(input.split(" "));
-            } catch (NoSuchElementException ignored) {
-                // ignored
-            }
+        while (!exit) {
+            Scanner scanner = new Scanner(System.in);
+            String input = scanner.nextLine();
+            this.commandHandler.tryToExecuteCommand(input.split(" "));
         }
     }
 

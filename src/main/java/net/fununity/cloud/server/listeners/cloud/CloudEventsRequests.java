@@ -68,16 +68,12 @@ public class CloudEventsRequests implements CloudEventListener {
                     break;
                 }
 
-                ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
                 event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER);
                 event.addData(serverId);
                 for (int i = 0; i < cloudEvent.getData().size() - 1; i++)
-                    event.addData(cloudEvent.getData().get(0));
+                    event.addData(cloudEvent.getData().get(i));
 
-                if (clientHandler.getServerFromCTX(ctx).getServerType() == ServerType.BUNGEECORD)
-                    ClientHandler.getInstance().sendEvent(ctx, event);
-                else
-                    serverHandler.sendToBungeeCord(event);
+                serverHandler.sendToBungeeCord(event);
                 break;
             case CloudEvent.REQ_PLAYER_COUNT_SERVER:
                 event = new CloudEvent(CloudEvent.RES_PLAYER_COUNT_SERVER);
