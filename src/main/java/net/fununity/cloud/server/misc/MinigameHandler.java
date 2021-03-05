@@ -54,7 +54,7 @@ public class MinigameHandler {
      */
     public void removeLobby(Server server) {
         Set<Server> servers = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
-        servers.add(server);
+        servers.remove(server);
         minigameLobbies.put(server.getServerType(), servers);
         if(servers.size() + startingServer < 2) {
             ServerHandler.getInstance().createServerByServerType(server.getServerType());
@@ -89,7 +89,7 @@ public class MinigameHandler {
             return;
         }
 
-        String state = event.getData().get(3).toString();
+        String state = event.getData().get(2).toString();
 
         if(state.equalsIgnoreCase("Lobby"))
             addLobby(server);
@@ -99,6 +99,24 @@ public class MinigameHandler {
         CloudServer.getLogger().info("Received minigame update event " + event.getData());
     }
 
+    /**
+     * Sends a player to a minigame lobby
+     * @param serverType {@link ServerType} - The server type to send
+     * @param uuid UUID - the uuid of the player
+     * @since 0.0.1
+     */
+    public void sendPlayerToMinigameLobby(ServerType serverType, UUID uuid) {
+        List<Server> servers = new ArrayList<>(minigameLobbies.getOrDefault(serverType, new HashSet<>()));
+        if(servers.isEmpty()) return;
+        Server server = servers.get(servers.size() - 1);
+        ServerHandler.getInstance().sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(server.getServerId()).addData(uuid));
+    }
+
+    /**
+     * Calls {@link MinigameHandler#removeLobby(Server)}
+     * @param server Server - the Server.
+     * @since 0.0.1
+     */
     public void removeServer(Server server) {
         this.removeLobby(server);
     }

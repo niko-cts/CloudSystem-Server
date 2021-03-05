@@ -76,9 +76,9 @@ public class CloudEvents implements CloudEventListener {
             case CloudEvent.FORWARD_TO_LOBBIES:
                 CloudEvent toForward = (CloudEvent) cloudEvent.getData().get(0);
                 if(toForward.getId() == CloudEvent.REQ_FOLLOW_ME) {
-                    Server server = serverHandler.getServerByIdentifier(toForward.getData().get(0).toString());
                     toForward = new CloudEvent(CloudEvent.RES_FOLLOW_ME);
-                    toForward.addData(serverHandler.getServerDefinitionByPort(server.getServerPort()));
+                    for (int i = 0; i < ((CloudEvent) cloudEvent.getData().get(0)).getData().size(); i++)
+                        toForward.addData(((CloudEvent) cloudEvent.getData().get(0)).getData().get(i));
                 }
 
                 for(Server server : serverHandler.getLobbyServers()) {

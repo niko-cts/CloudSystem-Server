@@ -8,8 +8,11 @@ import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
+import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
+
+import java.util.UUID;
 
 public class CloudEventsRequests implements CloudEventListener {
 
@@ -92,6 +95,11 @@ public class CloudEventsRequests implements CloudEventListener {
                 event.addData(serverHandler.getPlayerCountOfNetwork());
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
                 ClientHandler.getInstance().sendEvent(ctx, event);
+                break;
+            case CloudEvent.REQ_MINIGAME_LOBBY_SEND:
+                serverType = (ServerType) cloudEvent.getData().get(0);
+                UUID uuid = UUID.fromString(cloudEvent.getData().get(1).toString());
+                MinigameHandler.getInstance().sendPlayerToMinigameLobby(serverType, uuid);
                 break;
             case CloudEvent.NOTIFY_NETWORK_PLAYER_COUNT:
                 serverHandler.setPlayerCountOfNetwork(Integer.parseInt(cloudEvent.getData().get(0).toString()));

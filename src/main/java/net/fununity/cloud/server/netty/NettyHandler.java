@@ -19,15 +19,19 @@ import java.util.Set;
 
 public class NettyHandler extends ChannelInboundHandlerAdapter {
 
-    private static final Logger LOG = Logger.getLogger(NettyHandler.class.getName());
     private final Set<Long> receivedEvents;
+    private Logger log = null;
 
     public NettyHandler() {
         this.receivedEvents = new HashSet<>();
+    }
+
+    private void setupLog(String name) {
+        this.log = Logger.getLogger(NettyHandler.class.getName() + "-" + name);
         PatternLayout layout = new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n");
-        LOG.addAppender(new ConsoleAppender(layout));
-        LOG.setLevel(Level.INFO);
-        LOG.setAdditivity(false);
+        log.addAppender(new ConsoleAppender(layout));
+        log.setLevel(Level.INFO);
+        log.setAdditivity(false);
     }
 
     @Override
@@ -41,16 +45,19 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         ByteBuf inBuf = (ByteBuf) msg;
 
         Event event = MessagingUtils.convertStreamToEvent(inBuf);
+        if(log == null && ClientHandler.getInstance().getClientId(ctx) != null)
+            setupLog(ClientHandler.getInstance().getClientId(ctx));
 
         if(event == null) {
-            LOG.warn(ClientHandler.getInstance().getClientId(ctx) + " | Received null event");
+            if(log != null)
+                log.warn("Received null event");
             ClientHandler.getInstance().sendResendEvent(ctx);
             return;
         }
 
-
         if (receivedEvents.contains(event.getUniqueId())) {
-            LOG.warn(ClientHandler.getInstance().getClientId(ctx) + " | " + event.toString() + " event already received!");
+            if(log != null)
+                log.warn(event.toString() + " event already received!");
             ClientHandler.getInstance().openChannel(ctx);
             return;
         }
@@ -63,7 +70,8 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         if (event instanceof CloudEvent) {
             CloudEvent cloudEvent = (CloudEvent) event;
 
-            LOG.info(ClientHandler.getInstance().getClientId(ctx) + " | Received " + cloudEvent );
+            if(log != null)
+                log.info("Received " + cloudEvent );
 
             switch (cloudEvent.getId()) {
                 case CloudEvent.CLOUD_RESEND_REQUEST:
@@ -75,11 +83,13 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
                 default:
                     cloudEvent.addData(ctx);
                     CloudServer.getInstance().getCloudEventManager().fireCloudEvent(cloudEvent);
+                    break;
             }
 
         } else if (event instanceof DiscordEvent) {
             DiscordEvent discordEvent = (DiscordEvent) event;
-            LOG.info("Received " + discordEvent);
+            if(log != null)
+                log.info("Received " + discordEvent);
             CloudServer.getInstance().getDiscordEventManager().fireDiscordEvent(discordEvent);
         }
 
