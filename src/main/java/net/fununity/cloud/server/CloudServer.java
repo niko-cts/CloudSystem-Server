@@ -38,7 +38,7 @@ public class CloudServer implements Runnable{
         return INSTANCE;
     }
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
         PatternLayout layout = new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n");
         LOG.addAppender(new ConsoleAppender(layout));
         LOG.setLevel(Level.INFO);
