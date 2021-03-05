@@ -14,6 +14,7 @@ import org.apache.log4j.PatternLayout;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Handler class for all server mechanics and server util methods.
@@ -180,6 +181,19 @@ public class ServerHandler {
     }
 
     /**
+     * Get the ram that is been used from the server
+     * @return int - the ram currently used
+     * @since 0.0.1
+     */
+    public int getCurrentRamUsed() {
+        int ram = 0;
+        for (Server server : getServers()) {
+            ram += Integer.parseInt(server.getServerMaxRam().replaceAll("[^\\d.]", ""));
+        }
+        return ram;
+    }
+
+    /**
      * Shuts the server with the given server id down.
      * @param server Server - The server.
      * @param allServerOfType boolean - All server shut down
@@ -262,7 +276,7 @@ public class ServerHandler {
             serverId += nextNumber;
 
         int maxPlayers = getMaxPlayersOfServerType(serverType);
-        addServer(new Server(serverId, "127.0.0.1", "512M", serverId, maxPlayers, serverType));
+        addServer(new Server(serverId, "127.0.0.1", getRamFromType(serverType) + "M", serverId, maxPlayers, serverType));
     }
 
     private String getServerIdOfServerType(ServerType serverType) {
@@ -289,6 +303,18 @@ public class ServerHandler {
                 return "FreeBuild";
         }
         return "";
+    }
+
+    private int getRamFromType(ServerType serverType) {
+        switch (serverType) {
+            case LANDSCAPES:
+            case FREEBUILD:
+                return 4096;
+            case FLOWERWARS2x1:
+                return 256;
+            default:
+                return 512;
+        }
     }
 
     private int getMaxPlayersOfServerType(ServerType serverType) {
@@ -348,9 +374,9 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void startDefaultServers() {
-        if(this.servers.isEmpty()){
+        if (this.servers.isEmpty()) {
             ConfigHandler.getInstance().loadDefaultServers();
-        }else{
+        } else {
             LOG.warn("You cannot start all default servers when at least one server is already running.");
         }
     }

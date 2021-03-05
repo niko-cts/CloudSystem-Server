@@ -42,13 +42,11 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf inBuf = (ByteBuf) msg;
+        ClientHandler.getInstance().closeChannel(ctx);
 
-        Event event = MessagingUtils.convertStreamToEvent(inBuf);
-        if(log == null && ClientHandler.getInstance().getClientId(ctx) != null)
-            setupLog(ClientHandler.getInstance().getClientId(ctx));
+        Event event = MessagingUtils.convertStreamToEvent( (ByteBuf) msg);
 
-        if(event == null) {
+        if(event== null) {
             if(log != null)
                 log.warn("Received null event");
             ClientHandler.getInstance().sendResendEvent(ctx);
@@ -56,22 +54,20 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         }
 
         if (receivedEvents.contains(event.getUniqueId())) {
-            if(log != null)
+            if (log != null)
                 log.warn(event.toString() + " event already received!");
+            ClientHandler.getInstance().receiverQueueEmptied(ctx);
             ClientHandler.getInstance().openChannel(ctx);
             return;
         }
 
         this.receivedEvents.add(event.getUniqueId());
 
-        ClientHandler.getInstance().closeChannel(ctx);
-
+        if (log != null)
+            log.info("Received " + event);
 
         if (event instanceof CloudEvent) {
             CloudEvent cloudEvent = (CloudEvent) event;
-
-            if(log != null)
-                log.info("Received " + cloudEvent );
 
             switch (cloudEvent.getId()) {
                 case CloudEvent.CLOUD_RESEND_REQUEST:
@@ -88,12 +84,12 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
 
         } else if (event instanceof DiscordEvent) {
             DiscordEvent discordEvent = (DiscordEvent) event;
-            if(log != null)
-                log.info("Received " + discordEvent);
             CloudServer.getInstance().getDiscordEventManager().fireDiscordEvent(discordEvent);
         }
 
-        ctx.flush();
+        if(log == null && ClientHandler.getInstance().getClientId(ctx) != null)
+            setupLog(ClientHandler.getInstance().getClientId(ctx));
+
         ClientHandler.getInstance().openChannel(ctx);
     }
 

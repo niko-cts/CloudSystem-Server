@@ -54,17 +54,17 @@ public class MinigameHandler {
      */
     public void removeLobby(Server server) {
         Set<Server> servers = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
-        servers.remove(server);
-        minigameLobbies.put(server.getServerType(), servers);
-        if(servers.size() + startingServer < 2) {
-            ServerHandler.getInstance().createServerByServerType(server.getServerType());
-            startingServer++;
+        if (servers.contains(server)) {
+            servers.remove(server);
+            minigameLobbies.put(server.getServerType(), servers);
+            checkToAdd(servers.size(), server.getServerType());
         }
     }
 
     /**
-     * Adds a server
+     * Tries to add a new lobby
      * @param server Server - The Server
+     * @since 0.0.1
      */
     public void addLobby(Server server) {
         Set<Server> lobbies = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
@@ -73,6 +73,23 @@ public class MinigameHandler {
             if(startingServer > 0)
                 startingServer--;
             minigameLobbies.put(server.getServerType(), lobbies);
+            checkToAdd(lobbies.size(), server.getServerType());
+        }
+    }
+
+    /**
+     * Checks if a server needs to be added
+     * @param lobbies int - amount of lobbies
+     * @param serverType {@link ServerType} - The server type
+     * @since 0.0.1
+     */
+    private void checkToAdd(int lobbies, ServerType serverType) {
+        if (ServerHandler.getInstance().getCurrentRamUsed() > 51200)
+            return;
+
+        if (lobbies + startingServer < 3) {
+            startingServer++;
+            ServerHandler.getInstance().createServerByServerType(serverType);
         }
     }
 
@@ -96,6 +113,9 @@ public class MinigameHandler {
         else
             removeLobby(server);
 
+        int maxPlayers = Integer.parseInt(event.getData().get(5).toString());
+        server.setMaxPlayers(maxPlayers);
+
         CloudServer.getLogger().info("Received minigame update event " + event.getData());
     }
 
@@ -108,7 +128,9 @@ public class MinigameHandler {
     public void sendPlayerToMinigameLobby(ServerType serverType, UUID uuid) {
         List<Server> servers = new ArrayList<>(minigameLobbies.getOrDefault(serverType, new HashSet<>()));
         if(servers.isEmpty()) return;
-        Server server = servers.get(servers.size() - 1);
+        Server server = servers.stream().sorted(Comparator.comparing(Server::getServerId))
+                .filter(s -> s.getPlayerCount() < s.getMaxPlayers()).findFirst().orElse(null);
+        if(server == null) return;
         ServerHandler.getInstance().sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(server.getServerId()).addData(uuid));
     }
 

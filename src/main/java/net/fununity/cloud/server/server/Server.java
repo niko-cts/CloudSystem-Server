@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -51,7 +52,7 @@ public final class Server {
     private String serverPath;
     private final String serverMaxRam;
     private final String serverMotd;
-    private final int maxPlayers;
+    private int maxPlayers;
     private int playerCount;
 
     /**
@@ -403,5 +404,26 @@ public final class Server {
     public void restart() {
         this.stop(false);
         this.start();
+    }
+
+    /**
+     * Sets the max players of the server.
+     * @param maxPlayers int - max players
+     */
+    public void setMaxPlayers(int maxPlayers) {
+        this.maxPlayers = maxPlayers;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Server server = (Server) o;
+        return serverPort == server.serverPort && Objects.equals(serverId, server.serverId) && Objects.equals(serverIp, server.serverIp) && serverType == server.serverType && Objects.equals(serverPath, server.serverPath) && Objects.equals(serverMaxRam, server.serverMaxRam);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(serverId, serverIp, serverPort, serverType, serverPath, serverMaxRam);
     }
 }
