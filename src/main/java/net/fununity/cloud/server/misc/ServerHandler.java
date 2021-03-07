@@ -14,7 +14,6 @@ import org.apache.log4j.PatternLayout;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Handler class for all server mechanics and server util methods.
@@ -24,6 +23,7 @@ import java.util.stream.IntStream;
 public class ServerHandler {
 
     public static final Logger LOG = Logger.getLogger(ServerHandler.class.getName());
+    public static final int MAX_RAM = 51200;
     private static ServerHandler instance;
 
     private final ClientHandler clientHandler;
@@ -348,8 +348,8 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void restartAllServersOfType(ServerType serverType) {
-        for(Server server : this.servers) {
-            if(server.getServerType() == serverType) {
+        for (Server server : this.servers) {
+            if (server.getServerType() == serverType) {
                 server.restart();
             }
         }
@@ -383,21 +383,63 @@ public class ServerHandler {
 
     /**
      * Gets the serverId of the lobby with the lowest player count.
-     * @return String - the server id of the lobby.
+     * @return Server - the server of the lobby.
      * @since 0.0.1
      */
-    public String getServerIdOfSuitableLobby() {
+    public Server getSuitableLobby() {
+        return getSuitableLobby(new Server[0]);
+    }
+
+    /**
+     * Gets the serverId of the lobby with the lowest player count.
+     * @param blacklist Server[] - Server, which can not be taken.
+     * @return Server - the server of the lobby.
+     * @since 0.0.1
+     */
+    public Server getSuitableLobby(Server... blacklist) {
         Server lobby = null;
-        for(Server server : getLobbyServers()) {
-            if(lobby == null) {
+
+        for (Server server : getLobbyServers()) {
+            if (Arrays.asList(blacklist).contains(server))
+                continue;
+
+            if(lobby == null)
                 lobby = server;
-            }
             if (lobby.getPlayerCount() > server.getPlayerCount() && server.getPlayerCount() < (server.getMaxPlayers() - server.getMaxPlayers() / 10)) {
                 lobby = server;
                 break;
             }
         }
-        return lobby != null ? lobby.getServerId() : "";
+        return lobby;
+    }
+
+    /**
+     * Sends player to a lobby.
+     * @param blackListLobbies List<Server> - The lobbies the player can not be send
+     * @param sendingPlayers Queue<UUID> - A queue of players which should be send.
+     * @since 0.0.1
+     */
+    public void sendPlayerToLobby(List<Server> blackListLobbies, Queue<UUID> sendingPlayers) {
+        Server lobby = getSuitableLobby(blackListLobbies.toArray(new Server[0]));
+
+        if (lobby == null) {
+            LOG.warn("No suitable lobby to send player!");
+            return;
+        }
+
+        CloudEvent event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER);
+        event.addData(lobby.getServerId());
+
+        int canBeMoved = lobby.getMaxPlayers() - lobby.getPlayerCount() - 1;
+        for (int i=0; i < sendingPlayers.size() && i < canBeMoved; i++)
+            event.addData(sendingPlayers.poll());
+
+        sendToBungeeCord(event);
+
+        if(sendingPlayers.size() > 0) {
+            blackListLobbies.add(lobby);
+            sendPlayerToLobby(blackListLobbies, sendingPlayers);
+        }
     }
 
     /**
@@ -420,15 +462,15 @@ public class ServerHandler {
      */
     public void sendLobbyQueue() {
         Map<CloudEvent, List<String>> newQueue = new HashMap<>();
-        for(Map.Entry<CloudEvent, List<String>> entry : this.lobbyQueue.entrySet()) {
+        for (Map.Entry<CloudEvent, List<String>> entry : this.lobbyQueue.entrySet()) {
             List<String> serverIds = entry.getValue();
-            for(String id : new ArrayList<>(serverIds)) {
-                if(this.clientHandler.getClientContext(id) != null) {
+            for (String id : new ArrayList<>(serverIds)) {
+                if (this.clientHandler.getClientContext(id) != null) {
                     ClientHandler.getInstance().sendEvent(this.clientHandler.getClientContext(id), entry.getKey());
                     serverIds.remove(id);
                 }
             }
-            if(!serverIds.isEmpty())
+            if (!serverIds.isEmpty())
                 newQueue.put(entry.getKey(), serverIds);
         }
         this.lobbyQueue = newQueue;
@@ -564,4 +606,5 @@ public class ServerHandler {
         String serverId = getServerIdOfServerType(ServerType.LOBBY) + (lobbyCount < 10 ? "0" : "") + lobbyCount;
         addServer(new Server(serverId,"127.0.0.1", "512M", serverId, getMaxPlayersOfServerType(ServerType.LOBBY), ServerType.LOBBY));
     }
+
 }

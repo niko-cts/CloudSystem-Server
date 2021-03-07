@@ -19,7 +19,8 @@ public class CommandHandler {
      * @since 0.0.1
      */
     public CommandHandler(Logger logger) {
-        this.commandList = Arrays.asList(new HelpCommand(), new ServerTypeCommand(), new ListCommand(), new StopCommand(), new InfoCommand());
+        this.commandList = Arrays.asList(new HelpCommand(), new ServerTypeCommand(), new ListCommand(), new StopCommand(),
+                new RestartCommand(), new InfoCommand(), new StartCommand(), new UpdateCommand());
         this.log = logger;
 
     }
@@ -38,9 +39,9 @@ public class CommandHandler {
             return;
         }
         try {
-            String[] arguments = new String[args.length-1];
-            for(int i=1;i<args.length;i++)
-                arguments[i-1] = args[i];
+            String[] arguments = new String[args.length - 1];
+            for (int i = 1; i < args.length; i++)
+                arguments[i - 1] = args[i];
             command.execute(arguments);
         } catch (Exception exception) {
             log.warn("Exception while executing command " + command.getName() + ": " + exception.getMessage());

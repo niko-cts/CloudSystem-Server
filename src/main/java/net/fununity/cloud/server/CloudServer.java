@@ -74,7 +74,7 @@ public class CloudServer implements Runnable{
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(group);
             bootstrap.channel(NioServerSocketChannel.class);
-            bootstrap.localAddress(new InetSocketAddress("localhost", 1337));
+            bootstrap.localAddress(new InetSocketAddress("localhost", 2337));
 
             bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override

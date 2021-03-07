@@ -1,8 +1,10 @@
 package net.fununity.cloud.server.server;
 
+import net.fununity.cloud.common.events.EventPriority;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
+import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ServerHandler;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -359,14 +361,14 @@ public final class Server {
      * @since 0.0.1
      */
     public void stop(boolean delete) {
-        if(this.serverState != ServerState.RUNNING){
+        if (this.serverState != ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_IS_NOT_RUNNING);
             return;
         }
 
-        ServerHandler.getInstance().sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(this.serverId));
+        ServerHandler.getInstance().sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(this.serverId).setEventPriority(EventPriority.HIGH));
         File file = new File(this.serverPath + FILE_STOP);
-        if(!file.exists()) {
+        if (!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
             return;
         }
@@ -377,7 +379,7 @@ public final class Server {
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
             if (this.serverType != ServerType.LANDSCAPES && this.serverType != ServerType.FREEBUILD && delete)
                 deleteServerContent(Paths.get(this.serverPath).toFile());
-        }catch(IOException e){
+        } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
         }
     }
