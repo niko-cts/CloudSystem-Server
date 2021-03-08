@@ -76,7 +76,7 @@ public abstract class Command {
     }
 
     public void sendCommandUsage() {
-        log.info(usage + " - " + description);
+        log.info(getUsage() + " - " + getDescription());
     }
 
     public void sendIllegalServerType() {
@@ -87,4 +87,7 @@ public abstract class Command {
         log.warn(type + " is invalid! Type 'list' to see all servers.");
     }
 
+    public void sendIllegalIdOrServerType(String argument) {
+        log.warn(argument + " is not a valid server id or servertype! (Type: 'list' or 'servertype' to get help)");
+    }
 }

@@ -51,13 +51,16 @@ public class MinigameHandler {
     /**
      * Removes a server that left the lobby state
      * @param server Server - The Server
+     * @param check boolean - should check for a new lobby
+     * @since 0.0.1
      */
-    public void removeLobby(Server server) {
+    public void removeLobby(Server server, boolean check) {
         Set<Server> servers = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
         if (servers.contains(server)) {
             servers.remove(server);
             minigameLobbies.put(server.getServerType(), servers);
-            checkToAdd(servers.size(), server.getServerType());
+            if (check)
+                checkToAdd(servers.size(), server.getServerType());
         }
     }
 
@@ -111,7 +114,7 @@ public class MinigameHandler {
         if(state.equalsIgnoreCase("Lobby"))
             addLobby(server);
         else
-            removeLobby(server);
+            removeLobby(server, true);
 
         int maxPlayers = Integer.parseInt(event.getData().get(5).toString());
         server.setMaxPlayers(maxPlayers);
@@ -135,12 +138,13 @@ public class MinigameHandler {
     }
 
     /**
-     * Calls {@link MinigameHandler#removeLobby(Server)}
+     * Calls {@link MinigameHandler#removeLobby(Server, boolean)}
      * @param server Server - the Server.
+     * @param check boolean - checks if a new lobby should be created
      * @since 0.0.1
      */
-    public void removeServer(Server server) {
-        this.removeLobby(server);
+    public void removeServer(Server server, boolean check) {
+        this.removeLobby(server, check);
     }
 
     /**

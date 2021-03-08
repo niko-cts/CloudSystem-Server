@@ -1,5 +1,6 @@
 package net.fununity.cloud.server.command;
 
+import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
@@ -11,7 +12,7 @@ public class StopCommand extends Command {
      * @since 0.0.1
      */
     public StopCommand() {
-        super("stop", "stop <serverId>", "Stops a specified server id");
+        super("stop", "stop <serverId>/<serverType>", "Stops a specified server or all of one type");
     }
 
     /**
@@ -25,12 +26,19 @@ public class StopCommand extends Command {
             sendCommandUsage();
             return;
         }
-        Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
-        if(server == null) {
-            sendIllegalServerId(args[0]);
-            return;
+        try {
+            ServerType serverType = ServerType.valueOf(args[0]);
+            log.info("Shutting down " + serverType);
+            ServerHandler.getInstance().shutdownAllServersOfType(serverType);
+        } catch (IllegalArgumentException exception) {
+            Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
+            if (server == null) {
+                sendIllegalIdOrServerType(args[0]);
+                return;
+            }
+
+            log.info("Shutting down " + server.getServerId());
+            ServerHandler.getInstance().shutdownServer(server);
         }
-        log.info("Shutting down " + server.getServerId());
-        ServerHandler.getInstance().shutdownServer(server);
     }
 }

@@ -11,7 +11,6 @@ import net.fununity.cloud.common.events.cloud.CloudEventManager;
 import net.fununity.cloud.common.events.discord.DiscordEventManager;
 import net.fununity.cloud.server.command.CloudConsole;
 import net.fununity.cloud.server.listeners.cloud.CloudEvents;
-import net.fununity.cloud.server.listeners.cloud.CloudEventsAdmin;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsCache;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsRequests;
 import net.fununity.cloud.server.listeners.discord.DiscordEvents;
@@ -20,7 +19,6 @@ import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ConfigHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.netty.NettyHandler;
-import net.fununity.cloud.server.server.Server;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -65,7 +63,6 @@ public class CloudServer implements Runnable{
     public void run() {
         EventLoopGroup group = new NioEventLoopGroup();
         this.cloudEventManager.addCloudListener(new CloudEvents());
-        this.cloudEventManager.addCloudListener(new CloudEventsAdmin());
         this.cloudEventManager.addCloudListener(new CloudEventsCache());
         this.cloudEventManager.addCloudListener(new CloudEventsRequests());
         this.discordEventManager.addDiscordListener(new DiscordEvents());
@@ -74,7 +71,7 @@ public class CloudServer implements Runnable{
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(group);
             bootstrap.channel(NioServerSocketChannel.class);
-            bootstrap.localAddress(new InetSocketAddress("localhost", 2337));
+            bootstrap.localAddress(new InetSocketAddress("localhost", 1337));
 
             bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
@@ -117,13 +114,10 @@ public class CloudServer implements Runnable{
      * Shuts down every server and the cloud.
      * @since 0.0.1
      */
-    public void shutdownEverything(){
-        for(Server server : ServerHandler.getInstance().getServers()){
-            ClientHandler.getInstance().sendDisconnect(server.getServerId());
-            ClientHandler.getInstance().removeClient(server.getServerId());
-        }
-        ClientHandler.getInstance().sendDisconnect("AdminClient");
+    public void shutdownEverything() {
+        ServerHandler.getInstance().shutdownAllServers();
         ClientHandler.getInstance().sendDisconnect("DiscordBot");
+        CloudConsole.getInstance().shutDown();
         try {
             Runtime.getRuntime().exec("screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill");
             Runtime.getRuntime().exec("exit");

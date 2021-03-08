@@ -27,7 +27,7 @@ public class ListCommand extends Command {
         List<ServerDefinition> serverDefinitions = ServerHandler.getInstance().generateServerDefinitions();
         if(args.length == 1) {
             try {
-                ServerType serverType = ServerType.valueOf(args[0].toUpperCase());
+                ServerType serverType = ServerType.valueOf(args[0]);
                 serverDefinitions.removeIf(d -> d.getServerType() != serverType);
             } catch (IllegalArgumentException exception) {
                 sendIllegalServerType();

@@ -4,14 +4,14 @@ import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
 import net.fununity.cloud.server.misc.ServerHandler;
 
-public class StartCommand extends Command {
+public class ExpireCommand extends Command {
 
     /**
      * Instantiate this class with the name of a command and with none or specified aliases
      * @since 0.0.1
      */
-    public StartCommand() {
-        super("start", "start <serverType>", "Starts a new server with specified type");
+    public ExpireCommand() {
+        super("expire", "expire <serverType>", "Expires a server type. No server with this type won't start anymore till one type 'validate <serverType>'");
     }
 
     /**
@@ -21,22 +21,16 @@ public class StartCommand extends Command {
      */
     @Override
     public void execute(String[] args) {
-        if(args.length != 1) {
-            sendCommandUsage();
-            return;
+        if (args.length != 1) {
+           sendCommandUsage();
+           return;
         }
-        if(ServerHandler.getInstance().getCurrentRamUsed() > ServerHandler.MAX_RAM) {
-            log.warn("The network has reached it's maximum amount of ram.");
-            return;
-        }
-        ServerType serverType;
         try {
-            serverType = ServerType.valueOf(args[0]);
+            ServerType serverType = ServerType.valueOf(args[0]);
+            ServerHandler.getInstance().expire(serverType);
+            log.info("Expire-Mode enabled on " + serverType);
         } catch (IllegalArgumentException exception) {
             sendIllegalServerType();
-            return;
         }
-        log.info("Starting server with server type " + args[0]);
-        ServerHandler.getInstance().createServerByServerType(serverType);
     }
 }

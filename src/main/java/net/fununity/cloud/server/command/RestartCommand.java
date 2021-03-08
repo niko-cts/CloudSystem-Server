@@ -27,17 +27,22 @@ public class RestartCommand extends Command {
             return;
         }
         try {
-            ServerType serverType = ServerType.valueOf(args[0].toUpperCase());
-            log.info("Restarting all servers with server type " + args[0]);
+            ServerType serverType = ServerType.valueOf(args[0]);
+            if(serverType == ServerType.BUNGEECORD) {
+                log.warn("This servertype can not be restarted!");
+                return;
+            }
+
+            log.info("Restarting all servers with server type " + serverType);
             ServerHandler.getInstance().restartAllServersOfType(serverType);
         } catch (IllegalArgumentException exception) {
             Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
             if(server == null) {
-                log.warn("Illegal ServerType or ServerID");
+                sendIllegalIdOrServerType(args[0]);
                 return;
             }
             log.info("Restarting server " + args[0]);
-            server.restart();
+            ServerHandler.getInstance().restartServer(server);
         }
     }
 }

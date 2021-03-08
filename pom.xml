@@ -6,7 +6,7 @@
 
     <groupId>net.fununity.cloud</groupId>
     <artifactId>CloudSystem-Server</artifactId>
-    <version>DEVTEST</version>
+    <version>MASTER</version>
 
     <repositories>
         <repository>

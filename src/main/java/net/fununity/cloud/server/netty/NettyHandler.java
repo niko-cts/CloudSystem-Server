@@ -10,6 +10,8 @@ import net.fununity.cloud.common.utils.MessagingUtils;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
 
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -45,7 +47,7 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         }
 
         this.receivedEvents.add(event.getUniqueId());
-
+        System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Received " + event);
         if (event instanceof CloudEvent) {
             CloudEvent cloudEvent = (CloudEvent) event;
 
@@ -70,6 +72,15 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         ClientHandler.getInstance().openChannel(ctx);
     }
 
+    /**
+     * Gets the prefix for the info
+     * @return String - prefix
+     * @since 0.0.1
+     */
+    private String getPrefix(String clientId) {
+        OffsetDateTime now = OffsetDateTime.now();
+        return new StringBuilder().append("[").append(now.format(DateTimeFormatter.ISO_TIME)).append("] NettyHandler-").append(clientId).append(" [INFO]: ").toString();
+    }
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
         // not needed

@@ -56,7 +56,7 @@ public class CloudEvents implements CloudEventListener {
 
                 clientHandler.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def));
 
-                if(def.getServerType() == ServerType.LOBBY) {
+                if (def.getServerType() == ServerType.LOBBY) {
                     clientHandler.sendLobbyInformationToLobbies();
                     clientHandler.sendMinigameInformationToLobby();
                 }
@@ -65,6 +65,9 @@ public class CloudEvents implements CloudEventListener {
                 break;
             case CloudEvent.FORWARD_TO_BUNGEE:
                 serverHandler.sendToBungeeCord((CloudEvent) cloudEvent.getData().get(0));
+                break;
+            case CloudEvent.BUNGEE_REMOVED_SERVER:
+                serverHandler.receivedShutdownConfirmation(serverHandler.getServerByIdentifier(cloudEvent.getData().get(0).toString()));
                 break;
             case CloudEvent.NOTIFY_IDLE:
                 String serverId = cloudEvent.getData().get(0).toString();

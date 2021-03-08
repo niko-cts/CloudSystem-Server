@@ -4,7 +4,7 @@ import net.fununity.cloud.common.events.EventPriority;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.server.CloudServer;
+import net.fununity.cloud.server.misc.IServerShutdown;
 import net.fununity.cloud.server.misc.ServerHandler;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -56,6 +56,7 @@ public final class Server {
     private final String serverMotd;
     private int maxPlayers;
     private int playerCount;
+    private IServerShutdown removeConfirmation;
 
     /**
      * Creates a new server instance.
@@ -86,6 +87,7 @@ public final class Server {
         this.serverMotd = motd;
         this.maxPlayers = maxPlayers;
         this.playerCount = 0;
+        this.removeConfirmation = null;
         this.createServerPath();
         this.createIfNotExists();
         this.setServerProperties();
@@ -208,10 +210,9 @@ public final class Server {
     public void setPlayerCount(int playerCount) {
         this.playerCount = playerCount;
         if(serverType == ServerType.LOBBY) {
-            if(playerCount >= (maxPlayers - (maxPlayers/10))) {
-                ServerHandler.getInstance().addNewLobbyServer();
-            } else
-            if(playerCount == 0 && ServerHandler.getInstance().getLobbyCount() > 2) {
+            if(playerCount >= (maxPlayers - (maxPlayers * 0.1))) {
+                ServerHandler.getInstance().createServerByServerType(ServerType.LOBBY);
+            } else if (playerCount == 0 && !serverId.equals("Lobby01") && ServerHandler.getInstance().getLobbyCount() > 3) {
                 ServerHandler.getInstance().shutdownServer(this);
             }
         }
@@ -335,7 +336,7 @@ public final class Server {
      * Tries to start the server instance.
      * @since 0.0.1
      */
-    public void start(){
+    public void start() {
         if(this.serverState == ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_ALREADY_RUNNING);
             return;
@@ -360,19 +361,17 @@ public final class Server {
      * Tries to stop a server.
      * @since 0.0.1
      */
-    public void stop(boolean delete) {
+    public void stop (boolean delete) {
         if (this.serverState != ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_IS_NOT_RUNNING);
             return;
         }
 
-        ServerHandler.getInstance().sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(this.serverId).setEventPriority(EventPriority.HIGH));
         File file = new File(this.serverPath + FILE_STOP);
         if (!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
             return;
         }
-
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
@@ -392,20 +391,11 @@ public final class Server {
     private void deleteServerContent(File content) {
         File[] allContents = content.listFiles();
         if(allContents != null) {
-            for(File file : allContents){
+            for (File file : allContents) {
                 deleteServerContent(file);
             }
         }
         content.delete();
-    }
-
-    /**
-     * Restarts the server.
-     * Keep in mind, that the content of the server will be deleted.
-     */
-    public void restart() {
-        this.stop(false);
-        this.start();
     }
 
     /**
@@ -414,6 +404,25 @@ public final class Server {
      */
     public void setMaxPlayers(int maxPlayers) {
         this.maxPlayers = maxPlayers;
+    }
+
+
+    /**
+     * Check if server has received remove confirmation from bungee.
+     * @return IServerShutdown - remove confirmation.
+     * @since 0.0.1
+     */
+    public IServerShutdown getRemoveConfirmation() {
+        return removeConfirmation;
+    }
+
+    /**
+     * Sets remove confirmation to true.
+     * Remove confirmation needs to be send from bungee, so the server can finally be stopped.
+     * @since 0.0.1
+     */
+    public void setReceivedRemoveConfirmation(IServerShutdown shutdown) {
+        this.removeConfirmation = shutdown;
     }
 
     @Override
@@ -428,4 +437,5 @@ public final class Server {
     public int hashCode() {
         return Objects.hash(serverId, serverIp, serverPort, serverType, serverPath, serverMaxRam);
     }
+
 }

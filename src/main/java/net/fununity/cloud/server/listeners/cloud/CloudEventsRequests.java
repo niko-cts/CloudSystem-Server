@@ -57,6 +57,10 @@ public class CloudEventsRequests implements CloudEventListener {
                     serverHandler.shutdownServer(serverHandler.getServerByIdentifier(serverId));
                 }
                 break;
+            case CloudEvent.REQ_SERVER_RESTART:
+                String serverId = cloudEvent.getData().get(0).toString();
+                serverHandler.restartServer(serverHandler.getServerByIdentifier(serverId));
+                break;
             case CloudEvent.REQ_SERVER_TYPE:
                 ServerType serverType = serverHandler.getServerByIdentifier(cloudEvent.getData().get(0).toString()).getServerType();
                 event = new CloudEvent(CloudEvent.RES_SERVER_TYPE);

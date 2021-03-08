@@ -168,9 +168,9 @@ public class ClientHandler {
     public void sendLobbyInformationToLobbies() {
         CloudEvent cloudEvent = new CloudEvent(CloudEvent.RES_LOBBY_INFOS);
         Map<String, Integer> lobbyInformation = new HashMap<>();
-        for (Server lobbyServer : ServerHandler.getInstance().getLobbyServers()) {
+        for (Server lobbyServer : ServerHandler.getInstance().getLobbyServers())
             lobbyInformation.put(lobbyServer.getServerId(), lobbyServer.getPlayerCount());
-        }
+
         cloudEvent.addData(lobbyInformation);
         for (Map.Entry<String, ChannelHandlerContext> entry : this.clients.entrySet()) {
             if (entry.getKey().toLowerCase().contains("lobby") || entry.getKey().toLowerCase().contains("main")) {
@@ -184,7 +184,7 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void sendMinigameInformationToLobby() {
-        for(String serverId : MinigameHandler.getInstance().getLobbyServers()) {
+        for (String serverId : MinigameHandler.getInstance().getLobbyServers()) {
             ChannelHandlerContext server = getClientContext(serverId);
             if(server != null)
                 sendEvent(server, new CloudEvent(CloudEvent.REQ_MINIGAME_RESEND_STATUS));

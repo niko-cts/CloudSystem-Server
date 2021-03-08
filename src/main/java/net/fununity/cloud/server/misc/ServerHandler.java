@@ -1,6 +1,7 @@
 package net.fununity.cloud.server.misc;
 
 import io.netty.channel.ChannelHandlerContext;
+import net.fununity.cloud.common.events.EventPriority;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerState;
@@ -29,7 +30,7 @@ public class ServerHandler {
     private final ClientHandler clientHandler;
     private final List<Server> servers;
     private final Queue<Server> startQueue;
-    private Map<CloudEvent, List<String>> lobbyQueue;
+    private final Set<ServerType> expireServers;
     private int networkCount;
 
     /**
@@ -45,8 +46,8 @@ public class ServerHandler {
 
         this.clientHandler = ClientHandler.getInstance();
         this.servers = new ArrayList<>();
-        this.lobbyQueue = new HashMap<>();
         this.startQueue = new LinkedList<>();
+        this.expireServers = new HashSet<>();
         this.networkCount = 0;
     }
 
@@ -66,8 +67,8 @@ public class ServerHandler {
      * @return List<Server> - the list of servers.
      * @since 0.0.1
      */
-    public List<Server> getServers(){
-        return (List<Server>)(((ArrayList<Server>)this.servers).clone());
+    public List<Server> getServers() {
+        return new ArrayList<>(this.servers);
     }
 
     /**
@@ -91,8 +92,8 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void setServerIdle(String serverId){
-        for(Server server : this.servers){
-            if(server.getServerId().equalsIgnoreCase(serverId)){
+        for(Server server : this.servers) {
+            if(server.getServerId().equalsIgnoreCase(serverId)) {
                 server.setServerState(ServerState.IDLE);
                 createNewServerIfNeeded(server);
             }
@@ -177,7 +178,17 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownServer(Server server) {
-        shutdownServer(server, false);
+        shutdownServer(server, new IServerShutdown() {
+                    @Override
+                    public void serverStopped() {
+                        // nothing to do here
+                    }
+
+                    @Override
+                    public boolean needsMinigameCheck() {
+                        return true;
+                    }
+                });
     }
 
     /**
@@ -196,19 +207,53 @@ public class ServerHandler {
     /**
      * Shuts the server with the given server id down.
      * @param server Server - The server.
-     * @param allServerOfType boolean - All server shut down
+     * @param shutdown {@link IServerShutdown} - Interface which will be executed, when remove confirmation was sent.
      * @since 0.0.1
      */
-    private void shutdownServer(Server server, boolean allServerOfType) {
+    public void shutdownServer(Server server, IServerShutdown shutdown) {
+        if(server == null) return;
+        if (server.getRemoveConfirmation() == null) {
+            server.setReceivedRemoveConfirmation(shutdown);
+            sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
+        }
+    }
+
+    /**
+     * Bungee send the shutdown confirmation.
+     * Server will be stopped.
+     * @param server Server - the server that will be stopped
+     * @since 0.0.1
+     */
+    public void receivedShutdownConfirmation(Server server) {
         if(server == null) return;
         this.clientHandler.sendDisconnect(server.getServerId());
         this.clientHandler.removeClient(server.getServerId());
         this.servers.remove(server);
         server.stop(true);
-        if(!allServerOfType)
-            MinigameHandler.getInstance().removeServer(server);
         if (server.getServerType() == ServerType.LOBBY)
             this.clientHandler.sendLobbyInformationToLobbies();
+        else
+            MinigameHandler.getInstance().removeServer(server, server.getRemoveConfirmation().needsMinigameCheck());
+        server.getRemoveConfirmation().serverStopped();
+    }
+
+    /**
+     * Restarts a specified server.
+     * @param server {@link Server} - the server.
+     * @since 0.0.1
+     */
+    public void restartServer(Server server) {
+        shutdownServer(server, new IServerShutdown() {
+                    @Override
+                    public void serverStopped() {
+                        createServerByServerType(server.getServerType());
+                    }
+
+                    @Override
+                    public boolean needsMinigameCheck() {
+                        return false;
+                    }
+                });
     }
 
     /**
@@ -217,7 +262,17 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public List<Server> getLobbyServers() {
-        return this.servers.stream().filter(s->s.getServerType() == ServerType.LOBBY).collect(Collectors.toList());
+        return getServersByType(ServerType.LOBBY);
+    }
+
+    /**
+     * Returns a list containing all servers with specified type.
+     * @param serverType {@link ServerType} - The type of server.
+     * @return List<Server> - all servers with specified type.
+     * @since 0.0.1
+     */
+    public List<Server> getServersByType(ServerType serverType) {
+        return this.servers.stream().filter(s -> s.getServerType() == serverType).collect(Collectors.toList());
     }
 
     /**
@@ -254,12 +309,12 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void createServerByServerType(ServerType serverType) {
-        List<Server> serversWithSameType = new ArrayList<>();
-        for(Server server : this.servers) {
-            if (server.getServerType() == serverType)
-                serversWithSameType.add(server);
+        if (expireServers.contains(serverType)) {
+            LOG.warn(serverType + " was tried to start, but is in expire mode!");
+            return;
         }
 
+        List<Server> serversWithSameType = getServersByType(serverType);
         serversWithSameType.sort(Comparator.comparingInt(server -> Integer.parseInt(server.getServerId().replaceAll("[^\\d.]", ""))));
 
         int nextNumber = 1;
@@ -269,65 +324,16 @@ public class ServerHandler {
             }
         }
 
-        String serverId = getServerIdOfServerType(serverType);
+        String serverId = ServerUtils.getServerIdOfServerType(serverType);
         if(nextNumber < 10)
             serverId += "0" + nextNumber;
         else
             serverId += nextNumber;
 
-        int maxPlayers = getMaxPlayersOfServerType(serverType);
-        addServer(new Server(serverId, "127.0.0.1", getRamFromType(serverType) + "M", serverId, maxPlayers, serverType));
+        int maxPlayers = ServerUtils.getMaxPlayersOfServerType(serverType);
+        addServer(new Server(serverId, "127.0.0.1", ServerUtils.getRamFromType(serverType) + "M", serverId, maxPlayers, serverType));
     }
 
-    private String getServerIdOfServerType(ServerType serverType) {
-        switch(serverType) {
-            case BUNGEECORD:
-                return "BungeeCord";
-            case LOBBY:
-                return "Lobby";
-            case CAVEHUNT:
-                return "CH";
-            case FLOWERWARS2x1:
-                return "FWTxO";
-            case FLOWERWARS2x2:
-                return "FWTxT";
-            case FLOWERWARS4x2:
-                return "FWFxT";
-            case BEATINGPIRATES:
-                return "BP";
-            case PAINTTHESHEEP:
-                return "PTS";
-            case LANDSCAPES:
-                return "LandScapes";
-            case FREEBUILD:
-                return "FreeBuild";
-        }
-        return "";
-    }
-
-    private int getRamFromType(ServerType serverType) {
-        switch (serverType) {
-            case LANDSCAPES:
-            case FREEBUILD:
-                return 4096;
-            case FLOWERWARS2x1:
-                return 256;
-            default:
-                return 512;
-        }
-    }
-
-    private int getMaxPlayersOfServerType(ServerType serverType) {
-        switch(serverType) {
-            case BUNGEECORD:
-                return 120;
-            case LANDSCAPES:
-            case FREEBUILD:
-                return 50;
-            default:
-                return 30;
-        }
-    }
 
     /**
      * Shuts down all servers of the given server type.
@@ -335,10 +341,18 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServersOfType(ServerType type) {
-        for(Server server : new ArrayList<>(this.servers)) {
-            if(server.getServerType() == type) {
-                shutdownServer(server, true);
-            }
+        for (Server server : getServersByType(type)) {
+            shutdownServer(server, new IServerShutdown() {
+                            @Override
+                            public void serverStopped() {
+                                // Nothing to do here
+                            }
+
+                            @Override
+                            public boolean needsMinigameCheck() {
+                                return false;
+                            }
+                        });
         }
     }
 
@@ -348,10 +362,18 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void restartAllServersOfType(ServerType serverType) {
-        for (Server server : this.servers) {
-            if (server.getServerType() == serverType) {
-                server.restart();
-            }
+        for (Server server : getServersByType(serverType)) {
+            shutdownServer(server, new IServerShutdown() {
+                            @Override
+                            public void serverStopped() {
+                                createServerByServerType(serverType);
+                            }
+
+                            @Override
+                            public boolean needsMinigameCheck() {
+                                return false;
+                            }
+                        });
         }
     }
 
@@ -360,34 +382,18 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServers() {
-        for(Server server : this.servers) {
-            shutdownServer(server, true);
-            this.clientHandler.sendDisconnect(server.getServerId());
-            this.clientHandler.removeClient(server.getServerId());
-            server.stop(true);
-        }
-        this.servers.clear();
-    }
-
-    /**
-     * Starts all default servers.
-     * @since 0.0.1
-     */
-    public void startDefaultServers() {
-        if (this.servers.isEmpty()) {
-            ConfigHandler.getInstance().loadDefaultServers();
-        } else {
-            LOG.warn("You cannot start all default servers when at least one server is already running.");
-        }
-    }
-
-    /**
-     * Gets the serverId of the lobby with the lowest player count.
-     * @return Server - the server of the lobby.
-     * @since 0.0.1
-     */
-    public Server getSuitableLobby() {
-        return getSuitableLobby(new Server[0]);
+        IServerShutdown shutdownReceivement = new IServerShutdown() {
+            @Override
+            public void serverStopped() {
+                // nothing to do here
+            }
+            @Override
+            public boolean needsMinigameCheck() {
+                return false;
+            }
+        };
+        for (Server server : getServers())
+            shutdownServer(server, shutdownReceivement);
     }
 
     /**
@@ -399,8 +405,9 @@ public class ServerHandler {
     public Server getSuitableLobby(Server... blacklist) {
         Server lobby = null;
 
+        List<Server> blacklistServers = Arrays.asList(blacklist);
         for (Server server : getLobbyServers()) {
-            if (Arrays.asList(blacklist).contains(server))
+            if (blacklistServers.contains(server))
                 continue;
 
             if(lobby == null)
@@ -427,8 +434,7 @@ public class ServerHandler {
             return;
         }
 
-        CloudEvent event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER);
-        event.addData(lobby.getServerId());
+        CloudEvent event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(lobby.getServerId());
 
         int canBeMoved = lobby.getMaxPlayers() - lobby.getPlayerCount() - 1;
         for (int i=0; i < sendingPlayers.size() && i < canBeMoved; i++)
@@ -440,40 +446,6 @@ public class ServerHandler {
             blackListLobbies.add(lobby);
             sendPlayerToLobby(blackListLobbies, sendingPlayers);
         }
-    }
-
-    /**
-     * Adds a cloud event to the queue of a specific serverid
-     * @param serverId String - the server id of the lobby.
-     * @param event CloudEvent - the event to queue up.
-     * @since 0.0.1
-     */
-    public void addToLobbyQueue(String serverId, CloudEvent event) {
-        List<String> serverIds = new ArrayList<>();
-        if(this.lobbyQueue.containsKey(event))
-            serverIds = this.lobbyQueue.get(event);
-        serverIds.add(serverId);
-        this.lobbyQueue.put(event, serverIds);
-    }
-
-    /**
-     * Sends the events stored in the queue to the lobby server.
-     * @since 0.0.1
-     */
-    public void sendLobbyQueue() {
-        Map<CloudEvent, List<String>> newQueue = new HashMap<>();
-        for (Map.Entry<CloudEvent, List<String>> entry : this.lobbyQueue.entrySet()) {
-            List<String> serverIds = entry.getValue();
-            for (String id : new ArrayList<>(serverIds)) {
-                if (this.clientHandler.getClientContext(id) != null) {
-                    ClientHandler.getInstance().sendEvent(this.clientHandler.getClientContext(id), entry.getKey());
-                    serverIds.remove(id);
-                }
-            }
-            if (!serverIds.isEmpty())
-                newQueue.put(entry.getKey(), serverIds);
-        }
-        this.lobbyQueue = newQueue;
     }
 
     /**
@@ -528,7 +500,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public List<Server> getBungeeServers() {
-        return this.servers.stream().filter(s-> s.getServerType() == ServerType.BUNGEECORD).collect(Collectors.toList());
+        return getServersByType(ServerType.BUNGEECORD);
     }
 
     /**
@@ -598,13 +570,22 @@ public class ServerHandler {
     }
 
     /**
-     * Adds a new lobby server to the network
+     * Enables expire mode for this server type.
+     * When enabled, no more servers with this type will start.
+     * @param serverType {@link ServerType} - The type of server
      * @since 0.0.1
      */
-    public void addNewLobbyServer() {
-        int lobbyCount = getLobbyCount() + 1;
-        String serverId = getServerIdOfServerType(ServerType.LOBBY) + (lobbyCount < 10 ? "0" : "") + lobbyCount;
-        addServer(new Server(serverId,"127.0.0.1", "512M", serverId, getMaxPlayersOfServerType(ServerType.LOBBY), ServerType.LOBBY));
+    public void expire(ServerType serverType) {
+        this.expireServers.add(serverType);
     }
 
+    /**
+     * Disables expire mode for this server type.
+     * When enabled, no more servers with this type will start.
+     * @param serverType {@link ServerType} - The type of server
+     * @since 0.0.1
+     */
+    public void validate(ServerType serverType) {
+        this.expireServers.remove(serverType);
+    }
 }
