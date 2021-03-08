@@ -28,7 +28,7 @@ public class ListCommand extends Command {
         if(args.length == 1) {
             try {
                 ServerType serverType = ServerType.valueOf(args[0].toUpperCase());
-                serverDefinitions.removeIf(d->d.getServerType() != serverType);
+                serverDefinitions.removeIf(d -> d.getServerType() != serverType);
             } catch (IllegalArgumentException exception) {
                 sendIllegalServerType();
                 return;
@@ -37,7 +37,7 @@ public class ListCommand extends Command {
         log.info("Players on network: " + ServerHandler.getInstance().getPlayerCountOfNetwork());
         StringBuilder builder = new StringBuilder(serverDefinitions.size() + " servers active: ");
         for (ServerDefinition serverDefinition : serverDefinitions)
-            builder.append(serverDefinition.getServerId()).append(" with ").append(serverDefinition.getCurrentPlayers()).append(" Players, ");
+            builder.append(serverDefinition.getServerId()).append("(").append(serverDefinition.getCurrentPlayers()).append("), ");
         log.info(builder.toString());
     }
 }

@@ -12,7 +12,7 @@ import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
 
-import java.util.UUID;
+import java.util.*;
 
 public class CloudEventsRequests implements CloudEventListener {
 
@@ -20,8 +20,8 @@ public class CloudEventsRequests implements CloudEventListener {
     private final ServerHandler serverHandler;
 
     public CloudEventsRequests() {
-        clientHandler = ClientHandler.getInstance();
-        serverHandler = ServerHandler.getInstance();
+        this.clientHandler = ClientHandler.getInstance();
+        this.serverHandler = ServerHandler.getInstance();
     }
 
     @Override
@@ -64,19 +64,20 @@ public class CloudEventsRequests implements CloudEventListener {
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(1);
                 ClientHandler.getInstance().sendEvent(ctx, event);
                 break;
-            case CloudEvent.REQ_SEND_PLAYER_TO_LOBBY:
-                String serverId = serverHandler.getServerIdOfSuitableLobby();
-                if (serverId.isEmpty()) {
-                    CloudServer.getLogger().warn("No Lobby registered!!");
-                    break;
+            case CloudEvent.REQ_SEND_PLAYER_DIFFERENT_LOBBY:
+                Server blacklistedLobby = ServerHandler.getInstance().getServerByIdentifier(cloudEvent.getData().get(0).toString());
+                if (blacklistedLobby != null) {
+                    Queue<UUID> queue = new LinkedList<>();
+                    for (int i = 1; i < cloudEvent.getData().size() - 1; i++)
+                        queue.add((UUID) cloudEvent.getData().get(i));
+                    ServerHandler.getInstance().sendPlayerToLobby(new ArrayList<>(Collections.singletonList(blacklistedLobby)), queue);
                 }
-
-                event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER);
-                event.addData(serverId);
+                break;
+            case CloudEvent.REQ_SEND_PLAYER_TO_LOBBY:
+                Queue<UUID> queue = new LinkedList<>();
                 for (int i = 0; i < cloudEvent.getData().size() - 1; i++)
-                    event.addData(cloudEvent.getData().get(i));
-
-                serverHandler.sendToBungeeCord(event);
+                    queue.add((UUID) cloudEvent.getData().get(i));
+                ServerHandler.getInstance().sendPlayerToLobby(new ArrayList<>(), queue);
                 break;
             case CloudEvent.REQ_PLAYER_COUNT_SERVER:
                 event = new CloudEvent(CloudEvent.RES_PLAYER_COUNT_SERVER);

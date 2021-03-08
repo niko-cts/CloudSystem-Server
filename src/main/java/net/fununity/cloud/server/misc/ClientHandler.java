@@ -24,11 +24,24 @@ import java.util.concurrent.ConcurrentMap;
 public class ClientHandler {
 
     private static final Logger LOG = Logger.getLogger(ClientHandler.class.getName());
+
+    /**
+     * Gets the instance of the singleton ClientHandler.
+     * @return ClientHandler - the instance of the clienthandler.
+     * @since 0.0.1
+     */
+    public static ClientHandler getInstance() {
+        if (instance == null)
+            instance = new ClientHandler();
+        return instance;
+    }
+
     private static ClientHandler instance;
 
     private final ServerHandler serverHandler;
     private final ConcurrentMap<String, ChannelHandlerContext> clients;
     private ChannelHandlerContext discordContext;
+    private final Map<ChannelHandlerContext, EventSendingManager> eventSenderMap;
 
     /**
      * Default constructor for the ClientHandler.
@@ -45,18 +58,7 @@ public class ClientHandler {
         this.serverHandler = ServerHandler.getInstance();
         this.clients = new ConcurrentHashMap<>();
         this.discordContext = null;
-    }
-
-    /**
-     * Gets the instance of the singleton ClientHandler.
-     *
-     * @return ClientHandler - the instance of the clienthandler.
-     * @since 0.0.1
-     */
-    public static ClientHandler getInstance() {
-        if (instance == null)
-            instance = new ClientHandler();
-        return instance;
+        this.eventSenderMap = new HashMap<>();
     }
 
     /**
@@ -101,7 +103,7 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void removeClient(String clientId) {
-        this.senderMap.remove(getClientContext(clientId));
+        this.eventSenderMap.remove(getClientContext(clientId));
         this.clients.remove(clientId);
         if (clientId.equalsIgnoreCase("CloudBot"))
             this.discordContext = null;
@@ -117,7 +119,7 @@ public class ClientHandler {
         for (Map.Entry<String, ChannelHandlerContext> entry : this.clients.entrySet()) {
             if (entry.getValue() == ctx) {
                 this.clients.remove(entry.getKey());
-                this.senderMap.remove(entry.getValue());
+                this.eventSenderMap.remove(entry.getValue());
                 return;
             }
         }
@@ -142,7 +144,7 @@ public class ClientHandler {
         this.clients.remove(serverId);
         String newID = this.serverHandler.getServerIdentifierByPort(port);
         this.clients.putIfAbsent(newID, ctx);
-        this.senderMap.get(ctx).setClientID(newID);
+        this.eventSenderMap.get(ctx).setClientID(newID);
     }
 
     /**
@@ -177,7 +179,18 @@ public class ClientHandler {
         }
     }
 
-    private final Map<ChannelHandlerContext, EventSendingManager> senderMap = new HashMap<>();
+    /**
+     * Sends minigame data to the server
+     * @since 0.0.1
+     */
+    public void sendMinigameInformationToLobby() {
+        for(String serverId : MinigameHandler.getInstance().getLobbyServers()) {
+            ChannelHandlerContext server = getClientContext(serverId);
+            if(server != null)
+                sendEvent(server, new CloudEvent(CloudEvent.REQ_MINIGAME_RESEND_STATUS));
+        }
+    }
+
 
     /**
      * Sends an event to the specified CTX
@@ -186,8 +199,8 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void sendEvent(ChannelHandlerContext ctx, Event event) {
-        if (this.senderMap.containsKey(ctx))
-            this.senderMap.get(ctx).sendEvent(event.clone());
+        if (this.eventSenderMap.containsKey(ctx))
+            this.eventSenderMap.get(ctx).sendEvent(event.clone());
     }
 
     /**
@@ -196,8 +209,8 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void sendResendEvent(ChannelHandlerContext ctx) {
-        if (this.senderMap.containsKey(ctx))
-            this.senderMap.get(ctx).sendResendEvent();
+        if (this.eventSenderMap.containsKey(ctx))
+            this.eventSenderMap.get(ctx).sendResendEvent();
     }
 
     /**
@@ -206,8 +219,8 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void openChannel(ChannelHandlerContext ctx) {
-        if (this.senderMap.containsKey(ctx))
-            this.senderMap.get(ctx).openChannel();
+        if (this.eventSenderMap.containsKey(ctx))
+            this.eventSenderMap.get(ctx).openChannel();
     }
 
     /**
@@ -234,23 +247,34 @@ public class ClientHandler {
         return this.discordContext;
     }
 
+    /**
+     * Caches the new event sender for the given ctx
+     * @param ctx ChannelHandlerContext - The channel
+     * @since 0.0.1
+     */
     public void registerSendingManager(ChannelHandlerContext ctx) {
-        senderMap.put(ctx, new EventSendingManager(ctx));
+        eventSenderMap.put(ctx, new EventSendingManager(ctx));
     }
 
-    public void setClientIdToEventSender(ChannelHandlerContext ctx, String main) {
-        if(this.senderMap.containsKey(ctx))
-            senderMap.get(ctx).setClientID(main);
+    /**
+     * Stores the client id in the {@link EventSendingManager}.
+     * @param ctx ChannelHandlerContext - the channel
+     * @param clientId String - the client id
+     * @since 0.0.1
+     */
+    public void setClientIdToEventSender(ChannelHandlerContext ctx, String clientId) {
+        if(this.eventSenderMap.containsKey(ctx))
+            eventSenderMap.get(ctx).setClientID(clientId);
     }
 
+    /**
+     * Calls {@link EventSendingManager#resendEvent()} of the given ctx
+     * @param ctx ChannelHandlerContext - the channel
+     * @since 0.0.1
+     */
     public void resendLastEvent(ChannelHandlerContext ctx) {
-        if(this.senderMap.containsKey(ctx))
-            senderMap.get(ctx).resendEvent();
-    }
-
-    public Server getServerFromCTX(ChannelHandlerContext ctx) {
-        String clientId = getClientId(ctx);
-        return clientId != null ? serverHandler.getServerByIdentifier(clientId) : null;
+        if(this.eventSenderMap.containsKey(ctx))
+            eventSenderMap.get(ctx).resendEvent();
     }
 
     /**
@@ -259,8 +283,8 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void receiverQueueEmptied(ChannelHandlerContext ctx) {
-        if(this.senderMap.containsKey(ctx))
-            senderMap.get(ctx).needNoAnswer();
+        if(this.eventSenderMap.containsKey(ctx))
+            eventSenderMap.get(ctx).needNoAnswer();
     }
     /**
      * Closes the channel
@@ -268,7 +292,7 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void closeChannel(ChannelHandlerContext ctx) {
-        if(this.senderMap.containsKey(ctx))
-            senderMap.get(ctx).closeChannel();
+        if(this.eventSenderMap.containsKey(ctx))
+            eventSenderMap.get(ctx).closeChannel();
     }
 }

@@ -56,8 +56,10 @@ public class CloudEvents implements CloudEventListener {
 
                 clientHandler.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def));
 
-                if(def.getServerType() == ServerType.LOBBY)
+                if(def.getServerType() == ServerType.LOBBY) {
                     clientHandler.sendLobbyInformationToLobbies();
+                    clientHandler.sendMinigameInformationToLobby();
+                }
 
                 serverHandler.checkStartQueue(def);
                 break;

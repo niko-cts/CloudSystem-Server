@@ -84,7 +84,7 @@ public class MinigameHandler {
      * @since 0.0.1
      */
     private void checkToAdd(int lobbies, ServerType serverType) {
-        if (ServerHandler.getInstance().getCurrentRamUsed() > 51200)
+        if (ServerHandler.getInstance().getCurrentRamUsed() > ServerHandler.MAX_RAM)
             return;
 
         if (lobbies + startingServer < 3) {
@@ -141,5 +141,20 @@ public class MinigameHandler {
      */
     public void removeServer(Server server) {
         this.removeLobby(server);
+    }
+
+    /**
+     * Get the lobby servers.
+     * @return Set<String> - The server id's
+     * @since 0.0.1
+     */
+    public Set<String> getLobbyServers() {
+        Set<String> serverId = new HashSet<>();
+        for (Map.Entry<ServerType, Set<Server>> entry : minigameLobbies.entrySet()) {
+            for (Server server : entry.getValue()) {
+                serverId.add(server.getServerId());
+            }
+        }
+        return serverId;
     }
 }
