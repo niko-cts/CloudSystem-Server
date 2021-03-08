@@ -22,6 +22,6 @@ public class ServerTypeCommand extends Command {
      */
     @Override
     public void execute(String[] args) {
-        log.info(Arrays.toString(ServerType.values()));
+        log.info("All ServerTypes: " + Arrays.toString(ServerType.values()));
     }
 }
