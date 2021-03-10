@@ -1,5 +1,6 @@
 package net.fununity.cloud.server.misc;
 
+import net.fununity.cloud.common.events.EventPriority;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.CloudServer;
@@ -130,11 +131,9 @@ public class MinigameHandler {
      */
     public void sendPlayerToMinigameLobby(ServerType serverType, UUID uuid) {
         List<Server> servers = new ArrayList<>(minigameLobbies.getOrDefault(serverType, new HashSet<>()));
-        if(servers.isEmpty()) return;
-        Server server = servers.stream().sorted(Comparator.comparing(Server::getServerId))
-                .filter(s -> s.getPlayerCount() < s.getMaxPlayers()).findFirst().orElse(null);
-        if(server == null) return;
-        ServerHandler.getInstance().sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(server.getServerId()).addData(uuid));
+        servers.stream().filter(s -> s.getPlayerCount() < s.getMaxPlayers()).min(Comparator.comparing(Server::getServerId))
+                .ifPresent(server -> ServerHandler.getInstance().sendToBungeeCord(
+                        new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(server.getServerId()).addData(uuid).setEventPriority(EventPriority.HIGH)));
     }
 
     /**

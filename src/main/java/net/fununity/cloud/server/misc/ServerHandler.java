@@ -403,21 +403,11 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public Server getSuitableLobby(Server... blacklist) {
-        Server lobby = null;
-
         List<Server> blacklistServers = Arrays.asList(blacklist);
-        for (Server server : getLobbyServers()) {
-            if (blacklistServers.contains(server))
-                continue;
-
-            if(lobby == null)
-                lobby = server;
-            if (lobby.getPlayerCount() > server.getPlayerCount() && server.getPlayerCount() < (server.getMaxPlayers() - server.getMaxPlayers() / 10)) {
-                lobby = server;
-                break;
-            }
-        }
-        return lobby;
+        return getLobbyServers().stream()
+                .filter(server -> !blacklistServers.contains(server))
+                .filter(server -> server.getPlayerCount() + 1 < server.getMaxPlayers())
+                .max(Comparator.comparing(Server::getPlayerCount)).orElse(null);
     }
 
     /**
@@ -527,6 +517,9 @@ public class ServerHandler {
      */
     public void setPlayerCountOfNetwork(int count) {
         this.networkCount = count;
+        if (this.networkCount + 10 > getLobbyServers().stream().mapToInt(Server::getMaxPlayers).sum()) {
+            createServerByServerType(ServerType.LOBBY);
+        }
     }
 
     /**

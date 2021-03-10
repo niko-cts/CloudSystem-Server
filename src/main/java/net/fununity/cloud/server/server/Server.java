@@ -1,7 +1,5 @@
 package net.fununity.cloud.server.server;
 
-import net.fununity.cloud.common.events.EventPriority;
-import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.misc.IServerShutdown;
@@ -209,12 +207,10 @@ public final class Server {
      */
     public void setPlayerCount(int playerCount) {
         this.playerCount = playerCount;
-        if(serverType == ServerType.LOBBY) {
-            if(playerCount >= (maxPlayers - (maxPlayers * 0.1))) {
-                ServerHandler.getInstance().createServerByServerType(ServerType.LOBBY);
-            } else if (playerCount == 0 && !serverId.equals("Lobby01") && ServerHandler.getInstance().getLobbyCount() > 3) {
+        if (serverType == ServerType.LOBBY && playerCount == 0 && !serverId.equals("Lobby01") && !serverId.equals("Lobby02") &&
+                    ServerHandler.getInstance().getPlayerCountOfNetwork() + getMaxPlayers() < ServerHandler.getInstance().getLobbyServers().stream()
+                            .mapToInt(Server::getMaxPlayers).sum()) {
                 ServerHandler.getInstance().shutdownServer(this);
-            }
         }
     }
 
@@ -235,7 +231,7 @@ public final class Server {
      * @since 0.0.1
      */
     private void createIfNotExists() {
-        try{
+        try {
             if(Files.exists(Paths.get(this.serverPath)) && !Files.exists(Paths.get(this.serverPath + FILE_START))) {
                 deleteServerContent(Paths.get(this.serverPath).toFile());
             }

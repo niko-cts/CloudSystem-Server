@@ -103,7 +103,7 @@ public class CloudEventsRequests implements CloudEventListener {
                 break;
             case CloudEvent.REQ_MINIGAME_LOBBY_SEND:
                 serverType = (ServerType) cloudEvent.getData().get(0);
-                UUID uuid = UUID.fromString(cloudEvent.getData().get(1).toString());
+                UUID uuid = (UUID) cloudEvent.getData().get(1);
                 MinigameHandler.getInstance().sendPlayerToMinigameLobby(serverType, uuid);
                 break;
             case CloudEvent.NOTIFY_NETWORK_PLAYER_COUNT:
