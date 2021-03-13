@@ -130,10 +130,11 @@ public class MinigameHandler {
      * @since 0.0.1
      */
     public void sendPlayerToMinigameLobby(ServerType serverType, UUID uuid) {
-        List<Server> servers = new ArrayList<>(minigameLobbies.getOrDefault(serverType, new HashSet<>()));
-        servers.stream().filter(s -> s.getPlayerCount() < s.getMaxPlayers()).min(Comparator.comparing(Server::getServerId))
-                .ifPresent(server -> ServerHandler.getInstance().sendToBungeeCord(
-                        new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(server.getServerId()).addData(uuid).setEventPriority(EventPriority.HIGH)));
+        minigameLobbies.getOrDefault(serverType, new HashSet<>()).stream()
+                .filter(server -> server.getPlayerCount() < server.getMaxPlayers())
+                .max(Comparator.comparing(Server::getPlayerCount))
+                .ifPresent(server -> ServerHandler.getInstance()
+                        .sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(server.getServerId()).addData(uuid).setEventPriority(EventPriority.HIGH)));
     }
 
     /**

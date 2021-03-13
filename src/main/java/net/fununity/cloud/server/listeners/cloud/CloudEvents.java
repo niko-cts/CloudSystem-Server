@@ -11,6 +11,7 @@ import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
 
+import java.util.List;
 import java.util.Vector;
 
 public class CloudEvents implements CloudEventListener {
@@ -58,7 +59,6 @@ public class CloudEvents implements CloudEventListener {
 
                 if (def.getServerType() == ServerType.LOBBY) {
                     clientHandler.sendLobbyInformationToLobbies();
-                    clientHandler.sendMinigameInformationToLobby();
                 }
 
                 serverHandler.checkStartQueue(def);
@@ -85,15 +85,22 @@ public class CloudEvents implements CloudEventListener {
                     for (int i = 0; i < ((CloudEvent) cloudEvent.getData().get(0)).getData().size(); i++)
                         toForward.addData(((CloudEvent) cloudEvent.getData().get(0)).getData().get(i));
                 }
+                List<Server> lobbyServers = serverHandler.getLobbyServers();
 
-                for(Server server : serverHandler.getLobbyServers()) {
+                if (toForward.getId() == CloudEvent.STATUS_MINIGAME) {
+                    MinigameHandler.getInstance().receivedStatusUpdate(toForward);
+                    if(toForward.getData().size() == 7) {
+                        CloudEvent finalToForward = toForward;
+                        lobbyServers.removeIf(server -> !server.getServerId().equals(finalToForward.getData().get(6).toString()));
+                    }
+                }
+
+                for(Server server : lobbyServers) {
                     ChannelHandlerContext lobbyContext = clientHandler.getClientContext(server.getServerId());
                     if (lobbyContext != null)
                         clientHandler.sendEvent(lobbyContext, toForward);
                 }
 
-                if(toForward.getId() == CloudEvent.STATUS_MINIGAME)
-                    MinigameHandler.getInstance().receivedStatusUpdate(toForward);
                 break;
         }
     }

@@ -1,6 +1,5 @@
 package net.fununity.cloud.server.listeners.discord;
 
-import io.netty.buffer.Unpooled;
 import net.fununity.cloud.common.events.discord.DiscordEvent;
 import net.fununity.cloud.common.events.discord.DiscordEventListener;
 import net.fununity.cloud.common.utils.MessagingUtils;
@@ -32,17 +31,17 @@ public class DiscordEventsRequests implements DiscordEventListener {
             case DiscordEvent.REQ_BUNGEE_ONLINE:
                 if(this.discordHandler.isDiscordBotConnected()){
                     boolean isOnline = clientHandler.getClientContext("Main") != null;
-                    this.clientHandler.getDiscordContext().writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(new DiscordEvent(DiscordEvent.RES_BUNGEE_ONLINE).addData(isOnline)).toByteArray()));
+                    this.clientHandler.getDiscordContext().writeAndFlush(MessagingUtils.convertEventToStream(new DiscordEvent(DiscordEvent.RES_BUNGEE_ONLINE).addData(isOnline)));
                 }
                 break;
             case DiscordEvent.REQ_BUNGEE_PLAYERS:
                 for(Server server : this.serverHandler.getBungeeServers()){
-                    this.clientHandler.getClientContext(server.getServerId()).writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(new DiscordEvent(DiscordEvent.REQ_BUNGEE_PLAYERS)).toByteArray()));
+                    this.clientHandler.getClientContext(server.getServerId()).writeAndFlush(MessagingUtils.convertEventToStream(new DiscordEvent(DiscordEvent.REQ_BUNGEE_PLAYERS)));
                 }
                 break;
             case DiscordEvent.RES_BUNGEE_PLAYERS:
                 if(this.discordHandler.isDiscordBotConnected())
-                    this.clientHandler.getDiscordContext().writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(discordEvent).toByteArray()));
+                    this.clientHandler.getDiscordContext().writeAndFlush(MessagingUtils.convertEventToStream(discordEvent));
                 else{
                     System.out.println("DISCORDBOT NOT CONNECTED");
                 }

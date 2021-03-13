@@ -180,14 +180,15 @@ public class ClientHandler {
     }
 
     /**
-     * Sends minigame data to the server
+     * Sends minigame data to the server.
+     * @param lobbyId String - the lobby id that requested the status.
      * @since 0.0.1
      */
-    public void sendMinigameInformationToLobby() {
+    public void sendMinigameInformationToLobby(String lobbyId) {
         for (String serverId : MinigameHandler.getInstance().getLobbyServers()) {
             ChannelHandlerContext server = getClientContext(serverId);
-            if(server != null)
-                sendEvent(server, new CloudEvent(CloudEvent.REQ_MINIGAME_RESEND_STATUS));
+            if (server != null)
+                sendEvent(server, new CloudEvent(CloudEvent.REQ_MINIGAME_RESEND_STATUS).addData(lobbyId));
         }
     }
 
@@ -253,7 +254,7 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void registerSendingManager(ChannelHandlerContext ctx) {
-        eventSenderMap.put(ctx, new EventSendingManager(ctx));
+        this.eventSenderMap.put(ctx, new EventSendingManager(ctx));
     }
 
     /**
@@ -264,7 +265,7 @@ public class ClientHandler {
      */
     public void setClientIdToEventSender(ChannelHandlerContext ctx, String clientId) {
         if(this.eventSenderMap.containsKey(ctx))
-            eventSenderMap.get(ctx).setClientID(clientId);
+            this.eventSenderMap.get(ctx).setClientID(clientId);
     }
 
     /**

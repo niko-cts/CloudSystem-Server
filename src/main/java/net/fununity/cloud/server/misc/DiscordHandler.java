@@ -1,6 +1,5 @@
 package net.fununity.cloud.server.misc;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.events.discord.DiscordEvent;
 import net.fununity.cloud.common.server.ServerType;
@@ -44,7 +43,7 @@ public class DiscordHandler {
             if(server.getServerType() == ServerType.BUNGEECORD){
                 ChannelHandlerContext ctx = this.clientHandler.getClientContext(server.getServerId());
                 if(ctx != null){
-                    ctx.writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(event).toByteArray()));
+                    ctx.writeAndFlush(MessagingUtils.convertEventToStream(event));
                 }
             }
         }

@@ -83,6 +83,9 @@ public class CloudEventsRequests implements CloudEventListener {
                     queue.add((UUID) cloudEvent.getData().get(i));
                 ServerHandler.getInstance().sendPlayerToLobby(new ArrayList<>(), queue);
                 break;
+            case CloudEvent.REQ_MINIGAME_RESEND_STATUS:
+                clientHandler.sendMinigameInformationToLobby(cloudEvent.getData().get(0).toString());
+                break;
             case CloudEvent.REQ_PLAYER_COUNT_SERVER:
                 event = new CloudEvent(CloudEvent.RES_PLAYER_COUNT_SERVER);
                 event.addData(serverHandler.getPlayerCountOfServer(cloudEvent.getData().get(0).toString()));

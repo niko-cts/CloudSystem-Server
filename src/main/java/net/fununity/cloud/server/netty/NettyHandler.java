@@ -25,7 +25,6 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        super.channelActive(ctx);
         ClientHandler.getInstance().registerSendingManager(ctx);
     }
 
@@ -33,9 +32,9 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         ClientHandler.getInstance().closeChannel(ctx);
 
-        Event event = MessagingUtils.convertStreamToEvent( (ByteBuf) msg);
+        Event event = MessagingUtils.convertStreamToEvent((ByteBuf) msg);
 
-        if(event== null) {
+        if (event == null) {
             ClientHandler.getInstance().sendResendEvent(ctx);
             return;
         }

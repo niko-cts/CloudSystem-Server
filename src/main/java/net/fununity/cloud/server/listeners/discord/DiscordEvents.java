@@ -1,6 +1,5 @@
 package net.fununity.cloud.server.listeners.discord;
 
-import io.netty.buffer.Unpooled;
 import net.fununity.cloud.common.events.discord.DiscordEvent;
 import net.fununity.cloud.common.events.discord.DiscordEventListener;
 import net.fununity.cloud.common.utils.MessagingUtils;
@@ -28,7 +27,7 @@ public class DiscordEvents implements DiscordEventListener {
                 StringBuilder message = new StringBuilder();
                 message.append("**").append(data.get(0)).append("**").append(" » ").append(data.get(1));
                 if(this.discordHandler.isDiscordBotConnected())
-                    this.clientHandler.getDiscordContext().writeAndFlush(Unpooled.copiedBuffer(MessagingUtils.convertEventToStream(new DiscordEvent(DiscordEvent.DISCORD_MESSAGE).addData(message.toString())).toByteArray()));
+                    this.clientHandler.getDiscordContext().writeAndFlush(MessagingUtils.convertEventToStream(new DiscordEvent(DiscordEvent.DISCORD_MESSAGE).addData(message.toString())));
                 else
                     CloudServer.getLogger().warn("Received discord message but the discord bot is not registered!");
             break;
