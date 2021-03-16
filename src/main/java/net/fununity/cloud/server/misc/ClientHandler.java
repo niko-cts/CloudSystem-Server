@@ -41,7 +41,7 @@ public class ClientHandler {
     private final ServerHandler serverHandler;
     private final ConcurrentMap<String, ChannelHandlerContext> clients;
     private ChannelHandlerContext discordContext;
-    private final Map<ChannelHandlerContext, EventSendingManager> eventSenderMap;
+    private final ConcurrentMap<ChannelHandlerContext, EventSendingManager> eventSenderMap;
 
     /**
      * Default constructor for the ClientHandler.
@@ -58,7 +58,7 @@ public class ClientHandler {
         this.serverHandler = ServerHandler.getInstance();
         this.clients = new ConcurrentHashMap<>();
         this.discordContext = null;
-        this.eventSenderMap = new HashMap<>();
+        this.eventSenderMap = new ConcurrentHashMap<>();
     }
 
     /**
@@ -103,23 +103,25 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void removeClient(String clientId) {
-        this.eventSenderMap.remove(getClientContext(clientId));
-        this.clients.remove(clientId);
+        removeClient(getClientContext(clientId));
         if (clientId.equalsIgnoreCase("CloudBot"))
             this.discordContext = null;
     }
 
     /**
      * Removes a client based on the given ChannelHandlerContext.
-     *
      * @param ctx ChannelHandlerContext - the context.
      * @since 0.0.1
      */
     public void removeClient(ChannelHandlerContext ctx) {
-        for (Map.Entry<String, ChannelHandlerContext> entry : this.clients.entrySet()) {
+        for (Map.Entry<String, ChannelHandlerContext> entry : new ConcurrentHashMap<>(clients).entrySet()) {
             if (entry.getValue() == ctx) {
                 this.clients.remove(entry.getKey());
-                this.eventSenderMap.remove(entry.getValue());
+                EventSendingManager eventSendingManager = this.eventSenderMap.getOrDefault(entry.getValue(), null);
+                if (eventSendingManager != null) {
+                    eventSendingManager.closeChannel();
+                    this.eventSenderMap.remove(entry.getValue());
+                }
                 return;
             }
         }
@@ -127,7 +129,6 @@ public class ClientHandler {
 
     /**
      * Remaps the ChannelHandlerContext to the correct server id.
-     *
      * @param ctx  ChannelHandlerContext - the channel handler context.
      * @param port int - the port of the server.
      * @since 0.0.1
