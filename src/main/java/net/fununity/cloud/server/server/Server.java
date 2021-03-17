@@ -35,6 +35,7 @@ public final class Server {
     private static final String ERROR_SERVER_IS_NOT_RUNNING = "Server is not running!";
     private static final String ERROR_FILE_NOT_EXISTS = " does not exists. Can not execute it.";
     private static final String INFO_COPY_TEMPLATE_FOR = "Copying template for ";
+    private static final String INFO_COPY_BACKUP_FOR = "Copying backup for ";
     private static final String INFO_SERVER_STARTED = "Server started: ";
     private static final String INFO_SERVER_STOPPED = "Server stopped: ";
     private static final String FILE_START = "start.sh";
@@ -50,6 +51,7 @@ public final class Server {
     private final ServerType serverType;
     private ServerState serverState;
     private String serverPath;
+    private String backupPath;
     private final String serverMaxRam;
     private final String serverMotd;
     private int maxPlayers;
@@ -218,12 +220,16 @@ public final class Server {
      * Creates the path of the server.
      * @since 0.0.1
      */
-    private void createServerPath(){
+    private void createServerPath() {
         StringBuilder path = new StringBuilder();
         path.append("./Servers/");
         path.append(this.serverType == ServerType.BUNGEECORD ? "BungeeCord/" : "Spigot/");
         path.append(this.serverId).append("/");
         this.serverPath = path.toString();
+        StringBuilder backup = new StringBuilder();
+        backup.append("./Servers/Backups/");
+        backup.append(this.serverId).append("/");
+        this.backupPath = backup.toString();
     }
 
     /**
@@ -232,14 +238,14 @@ public final class Server {
      */
     private void createIfNotExists() {
         try {
-            if(Files.exists(Paths.get(this.serverPath)) && !Files.exists(Paths.get(this.serverPath + FILE_START))) {
+            if (Files.exists(Paths.get(this.serverPath)) && !Files.exists(Paths.get(this.serverPath + FILE_START))) {
                 deleteServerContent(Paths.get(this.serverPath).toFile());
             }
             if(!Files.exists(Paths.get(this.serverPath))) {
                 LOG.warn(this.serverPath + ERROR_NOT_EXIST_CREATING);
                 Files.createDirectories(Paths.get(this.serverPath));
-                String templatePath = createTemplatePath();
-                if(!Files.exists(Paths.get(templatePath))) {
+                String templatePath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : createTemplatePath();
+                if (!Files.exists(Paths.get(templatePath))) {
                     LOG.warn(templatePath + ERROR_NOT_EXIST_CREATING);
                     Files.createDirectories(Paths.get(templatePath));
                 }
@@ -259,6 +265,7 @@ public final class Server {
             LOG.warn(ERROR_COULD_NOT_CREATE_DIRECTORIES + e.getMessage());
         }
     }
+
 
     private void setServerProperties() {
         try {
@@ -285,7 +292,7 @@ public final class Server {
      * @return String - the path.
      * @since 0.0.1
      */
-    private String createTemplatePath(){
+    private String createTemplatePath() {
         StringBuilder path = new StringBuilder();
         path.append("./Servers/Templates/");
         switch(this.getServerType()){
@@ -333,7 +340,7 @@ public final class Server {
      * @since 0.0.1
      */
     public void start() {
-        if(this.serverState == ServerState.RUNNING) {
+        if (this.serverState == ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_ALREADY_RUNNING);
             return;
         }
@@ -372,8 +379,37 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            if (this.serverType != ServerType.LANDSCAPES && this.serverType != ServerType.FREEBUILD && delete)
+            if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD) {
+                createBackup();
+            } else if (delete)
                 deleteServerContent(Paths.get(this.serverPath).toFile());
+
+        } catch (IOException e) {
+            LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
+        }
+    }
+
+    /**
+     * Creates a backup from the current server path.
+     * @since 0.0.1
+     */
+    public void createBackup() {
+        try {
+            if (!Files.exists(Paths.get(this.backupPath))) {
+                LOG.warn(this.backupPath + ERROR_NOT_EXIST_CREATING);
+                Files.createDirectories(Paths.get(this.backupPath));
+            }
+            LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
+            Path src = Paths.get(this.serverPath);
+            Path dest = Paths.get(this.backupPath);
+            Stream<Path> files = Files.walk(src);
+            files.forEach(file -> {
+                try {
+                    Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+                } catch (IOException e) {
+                    LOG.warn("Could not copy file: " + file.toAbsolutePath());
+                }
+            });
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
         }
@@ -386,7 +422,7 @@ public final class Server {
      */
     private void deleteServerContent(File content) {
         File[] allContents = content.listFiles();
-        if(allContents != null) {
+        if (allContents != null) {
             for (File file : allContents) {
                 deleteServerContent(file);
             }
