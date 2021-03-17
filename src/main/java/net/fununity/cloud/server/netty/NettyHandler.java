@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import net.fununity.cloud.common.events.Event;
+import net.fununity.cloud.common.events.EventSendingManager;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.discord.DiscordEvent;
 import net.fununity.cloud.common.utils.MessagingUtils;
@@ -46,7 +47,8 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         }
 
         this.receivedEvents.add(event.getUniqueId());
-        System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Received " + event);
+        if (EventSendingManager.DEBUG)
+            System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Received " + event);
         if (event instanceof CloudEvent) {
             CloudEvent cloudEvent = (CloudEvent) event;
 

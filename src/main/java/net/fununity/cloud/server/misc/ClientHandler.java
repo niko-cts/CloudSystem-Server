@@ -119,7 +119,7 @@ public class ClientHandler {
                 this.clients.remove(entry.getKey());
                 EventSendingManager eventSendingManager = this.eventSenderMap.getOrDefault(entry.getValue(), null);
                 if (eventSendingManager != null) {
-                    eventSendingManager.closeChannel();
+                    eventSendingManager.disconnect();
                     this.eventSenderMap.remove(entry.getValue());
                 }
                 return;
