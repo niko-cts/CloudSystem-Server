@@ -379,9 +379,9 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD) {
+            if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD)
                 createBackup();
-            } else if (delete)
+            else if (delete)
                 deleteServerContent(Paths.get(this.serverPath).toFile());
 
         } catch (IOException e) {

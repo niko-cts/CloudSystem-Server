@@ -67,6 +67,10 @@ public class CloudEvents implements CloudEventListener {
                 serverHandler.sendToBungeeCord((CloudEvent) cloudEvent.getData().get(0));
                 break;
             case CloudEvent.BUNGEE_REMOVED_SERVER:
+                clientHandler.sendEvent(clientHandler.getClientContext(cloudEvent.getData().get(0).toString()),
+                        new CloudEvent(CloudEvent.CLIENT_IS_ABOUT_TO_SHUTDOWN));
+                break;
+            case CloudEvent.CLIENT_CAN_SHUTDOWN:
                 serverHandler.receivedShutdownConfirmation(serverHandler.getServerByIdentifier(cloudEvent.getData().get(0).toString()));
                 break;
             case CloudEvent.NOTIFY_IDLE:
