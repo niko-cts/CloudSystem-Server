@@ -78,8 +78,6 @@ public class MinigameHandler {
             if(startingServer > 0)
                 startingServer--;
             minigameLobbies.put(server.getServerType(), lobbies);
-            CloudServer.getLogger().info("Adding a new minigame lobby " + server.getServerId());
-            checkToAdd(lobbies.size(), server.getServerType());
         }
     }
 

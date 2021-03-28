@@ -2,7 +2,7 @@ package net.fununity.cloud.server.server;
 
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.server.misc.IServerShutdown;
+import net.fununity.cloud.server.misc.ServerShutdown;
 import net.fununity.cloud.server.misc.ServerHandler;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -56,7 +56,7 @@ public final class Server {
     private final String serverMotd;
     private int maxPlayers;
     private int playerCount;
-    private IServerShutdown removeConfirmation;
+    private ServerShutdown removeConfirmation;
 
     /**
      * Creates a new server instance.
@@ -261,8 +261,9 @@ public final class Server {
                     }
                 });
             }
-        }catch(IOException e){
+        } catch(IOException e) {
             LOG.warn(ERROR_COULD_NOT_CREATE_DIRECTORIES + e.getMessage());
+            ServerHandler.getInstance().checkStartQueue(ServerHandler.getInstance().getServerDefinitionByPort(serverPort));
         }
     }
 
@@ -342,12 +343,14 @@ public final class Server {
     public void start() {
         if (this.serverState == ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_ALREADY_RUNNING);
+            ServerHandler.getInstance().serverCouldNotStart(this);
             return;
         }
 
         File file = new File(this.serverPath + FILE_START);
-        if(!file.exists()) {
+        if (!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
+            ServerHandler.getInstance().serverCouldNotStart(this);
             return;
         }
 
@@ -357,6 +360,7 @@ public final class Server {
             LOG.info(INFO_SERVER_STARTED + this.serverId);
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
+            ServerHandler.getInstance().serverCouldNotStart(this);
         }
     }
 
@@ -364,7 +368,7 @@ public final class Server {
      * Tries to stop a server.
      * @since 0.0.1
      */
-    public void stop (boolean delete) {
+    public void stop() {
         if (this.serverState != ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_IS_NOT_RUNNING);
             return;
@@ -381,9 +385,8 @@ public final class Server {
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
             if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD)
                 createBackup();
-            else if (delete)
+            else
                 deleteServerContent(Paths.get(this.serverPath).toFile());
-
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
         }
@@ -444,7 +447,7 @@ public final class Server {
      * @return IServerShutdown - remove confirmation.
      * @since 0.0.1
      */
-    public IServerShutdown getRemoveConfirmation() {
+    public ServerShutdown getRemoveConfirmation() {
         return removeConfirmation;
     }
 
@@ -453,7 +456,7 @@ public final class Server {
      * Remove confirmation needs to be send from bungee, so the server can finally be stopped.
      * @since 0.0.1
      */
-    public void setReceivedRemoveConfirmation(IServerShutdown shutdown) {
+    public void setReceivedRemoveConfirmation(ServerShutdown shutdown) {
         this.removeConfirmation = shutdown;
     }
 

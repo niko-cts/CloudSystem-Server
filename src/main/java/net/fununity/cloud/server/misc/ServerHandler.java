@@ -30,6 +30,7 @@ public class ServerHandler {
     private final ClientHandler clientHandler;
     private final List<Server> servers;
     private final Queue<Server> startQueue;
+    private final Queue<Server> stopQueue;
     private final Set<ServerType> expireServers;
     private int networkCount;
 
@@ -47,6 +48,7 @@ public class ServerHandler {
         this.clientHandler = ClientHandler.getInstance();
         this.servers = new ArrayList<>();
         this.startQueue = new LinkedList<>();
+        this.stopQueue = new LinkedList<>();
         this.expireServers = new HashSet<>();
         this.networkCount = 0;
     }
@@ -178,17 +180,16 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownServer(Server server) {
-        shutdownServer(server, new IServerShutdown() {
-                    @Override
-                    public void serverStopped() {
-                        // nothing to do here
-                    }
-
-                    @Override
-                    public boolean needsMinigameCheck() {
-                        return true;
-                    }
-                });
+        shutdownServer(server, new ServerShutdown(true) {
+            /**
+             * Server was stopped.
+             * @since 0.0.1
+             */
+            @Override
+            void serverStopped() {
+                // nothing to do here
+            }
+        });
     }
 
     /**
@@ -207,10 +208,10 @@ public class ServerHandler {
     /**
      * Shuts the server with the given server id down.
      * @param server Server - The server.
-     * @param shutdown {@link IServerShutdown} - Interface which will be executed, when remove confirmation was sent.
+     * @param shutdown {@link ServerShutdown} - Interface which will be executed, when remove confirmation was sent.
      * @since 0.0.1
      */
-    public void shutdownServer(Server server, IServerShutdown shutdown) {
+    public void shutdownServer(Server server, ServerShutdown shutdown) {
         if(server == null) return;
         if (server.getRemoveConfirmation() == null) {
             server.setReceivedRemoveConfirmation(shutdown);
@@ -228,13 +229,43 @@ public class ServerHandler {
         if(server == null) return;
         this.clientHandler.sendDisconnect(server.getServerId());
         this.clientHandler.removeClient(server.getServerId());
+
+        this.stopQueue.add(server);
+        if (stopQueue.size() == 1) {
+            deleteServer(server);
+        }
+    }
+
+    /**
+     * Removes the server from the queue.
+     * Calls {@link #deleteServer(Server)} to the next server in queue.
+     * @param server Server - the server to delete.
+     * @since 0.0.1
+     */
+    private void checkStopQueue(Server server) {
+        if (this.stopQueue.contains(server)) {
+            this.stopQueue.remove(server);
+            if (!this.stopQueue.isEmpty()) {
+                deleteServer(this.stopQueue.peek());
+            }
+        }
+    }
+
+    /**
+     * Delets a server completely.
+     * @param server Server - the server
+     * @since 0.0.1
+     */
+    private void deleteServer(Server server) {
+        server.stop();
         this.servers.remove(server);
-        server.stop(true);
         if (server.getServerType() == ServerType.LOBBY)
             this.clientHandler.sendLobbyInformationToLobbies();
         else
             MinigameHandler.getInstance().removeServer(server, server.getRemoveConfirmation().needsMinigameCheck());
-        server.getRemoveConfirmation().serverStopped();
+        if (server.getRemoveConfirmation() != null)
+            server.getRemoveConfirmation().serverStopped();
+        checkStopQueue(server);
     }
 
     /**
@@ -243,15 +274,10 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void restartServer(Server server) {
-        shutdownServer(server, new IServerShutdown() {
+        shutdownServer(server, new ServerShutdown(false) {
                     @Override
                     public void serverStopped() {
                         createServerByServerType(server.getServerType());
-                    }
-
-                    @Override
-                    public boolean needsMinigameCheck() {
-                        return false;
                     }
                 });
     }
@@ -342,15 +368,10 @@ public class ServerHandler {
      */
     public void shutdownAllServersOfType(ServerType type) {
         for (Server server : getServersByType(type)) {
-            shutdownServer(server, new IServerShutdown() {
+            shutdownServer(server, new ServerShutdown(false) {
                             @Override
                             public void serverStopped() {
                                 // Nothing to do here
-                            }
-
-                            @Override
-                            public boolean needsMinigameCheck() {
-                                return false;
                             }
                         });
         }
@@ -363,15 +384,10 @@ public class ServerHandler {
      */
     public void restartAllServersOfType(ServerType serverType) {
         for (Server server : getServersByType(serverType)) {
-            shutdownServer(server, new IServerShutdown() {
+            shutdownServer(server, new ServerShutdown(false) {
                             @Override
                             public void serverStopped() {
                                 createServerByServerType(serverType);
-                            }
-
-                            @Override
-                            public boolean needsMinigameCheck() {
-                                return false;
                             }
                         });
         }
@@ -382,18 +398,14 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServers() {
-        IServerShutdown shutdownReceivement = new IServerShutdown() {
+        ServerShutdown shutdownReceived = new ServerShutdown(false) {
             @Override
             public void serverStopped() {
                 // nothing to do here
             }
-            @Override
-            public boolean needsMinigameCheck() {
-                return false;
-            }
         };
         for (Server server : getServers())
-            shutdownServer(server, shutdownReceivement);
+            shutdownServer(server, shutdownReceived);
     }
 
     /**
@@ -580,5 +592,16 @@ public class ServerHandler {
      */
     public void validate(ServerType serverType) {
         this.expireServers.remove(serverType);
+    }
+
+    /**
+     * Will be called, when a server could not start properly.
+     * @param server Server - the server that could not start.
+     * @since 0.0.1
+     */
+    public void serverCouldNotStart(Server server) {
+        this.servers.remove(server);
+        sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()));
+        checkStartQueue(getServerDefinitionByPort(server.getServerPort()));
     }
 }
