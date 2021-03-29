@@ -257,7 +257,7 @@ public final class Server {
                     try {
                         Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
                     } catch (IOException e) {
-                        LOG.warn("Could not copy file: " + file.toAbsolutePath());
+                        LOG.warn("Could not copy file: " + file.toAbsolutePath() + " (" + e.getMessage() + ")");
                     }
                 });
             }

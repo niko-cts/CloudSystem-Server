@@ -31,6 +31,7 @@ public class ServerHandler {
     private final List<Server> servers;
     private final Queue<Server> startQueue;
     private final Queue<Server> stopQueue;
+    private final Map<ServerType, ServerRestartingIterator> restartQueue;
     private final Set<ServerType> expireServers;
     private int networkCount;
 
@@ -49,6 +50,7 @@ public class ServerHandler {
         this.servers = new ArrayList<>();
         this.startQueue = new LinkedList<>();
         this.stopQueue = new LinkedList<>();
+        this.restartQueue = new EnumMap<>(ServerType.class);
         this.expireServers = new HashSet<>();
         this.networkCount = 0;
     }
@@ -277,9 +279,36 @@ public class ServerHandler {
         shutdownServer(server, new ServerShutdown(false) {
                     @Override
                     public void serverStopped() {
-                        createServerByServerType(server.getServerType());
+                        if (!restartQueue.containsKey(server.getServerType())) {
+                            createServerByServerType(server.getServerType());
+                            return;
+                        }
+
+                        ServerRestartingIterator serverRestartingIterator = restartQueue.get(server.getServerType());
+                        if (serverRestartingIterator.getIterator().hasNext()) {
+                            restartServer(serverRestartingIterator.getIterator().next());
+                            return;
+                        }
+                        restartQueue.remove(serverRestartingIterator.getServerType());
+                        for (int i = 0; i < serverRestartingIterator.getSize(); i++) {
+                            createServerByServerType(server.getServerType());
+                        }
                     }
                 });
+    }
+
+    /**
+     * Restarts all servers of the given server type.
+     * @param serverType ServerType - the server type.
+     * @since 0.0.1
+     */
+    public void restartAllServersOfType(ServerType serverType) {
+        if (this.restartQueue.containsKey(serverType)) return;
+        List<Server> serversByType = getServersByType(serverType);
+        if (serversByType.isEmpty()) return;
+        Iterator<Server> iterate = serversByType.iterator();
+        this.restartQueue.put(serverType, new ServerRestartingIterator(serverType, iterate, serversByType.size()));
+        restartServer(iterate.next());
     }
 
     /**
@@ -377,21 +406,6 @@ public class ServerHandler {
         }
     }
 
-    /**
-     * Restarts all servers of the given server type.
-     * @param serverType ServerType - the server type.
-     * @since 0.0.1
-     */
-    public void restartAllServersOfType(ServerType serverType) {
-        for (Server server : getServersByType(serverType)) {
-            shutdownServer(server, new ServerShutdown(false) {
-                            @Override
-                            public void serverStopped() {
-                                createServerByServerType(serverType);
-                            }
-                        });
-        }
-    }
 
     /**
      * Shuts down all servers.
