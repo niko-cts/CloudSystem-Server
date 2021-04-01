@@ -128,7 +128,7 @@ public class ServerHandler {
      * @see Server
      * @since 0.0.1
      */
-    public Server getServerByIdentifier(String identifier){
+    public Server getServerByIdentifier(String identifier) {
         for (Server server : this.servers) {
             if(server.getServerId().equals(identifier))
                 return server;
@@ -183,10 +183,6 @@ public class ServerHandler {
      */
     public void shutdownServer(Server server) {
         shutdownServer(server, new ServerShutdown(true) {
-            /**
-             * Server was stopped.
-             * @since 0.0.1
-             */
             @Override
             void serverStopped() {
                 // nothing to do here
@@ -215,8 +211,8 @@ public class ServerHandler {
      */
     public void shutdownServer(Server server, ServerShutdown shutdown) {
         if(server == null) return;
-        if (server.getRemoveConfirmation() == null) {
-            server.setReceivedRemoveConfirmation(shutdown);
+        if (server.getShutdownProcess() == null) {
+            server.setShutdownProcess(shutdown);
             sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
         }
     }
@@ -263,10 +259,10 @@ public class ServerHandler {
         this.servers.remove(server);
         if (server.getServerType() == ServerType.LOBBY)
             this.clientHandler.sendLobbyInformationToLobbies();
-        else
-            MinigameHandler.getInstance().removeServer(server, server.getRemoveConfirmation().needsMinigameCheck());
-        if (server.getRemoveConfirmation() != null)
-            server.getRemoveConfirmation().serverStopped();
+        else if (server.getShutdownProcess() != null)
+            MinigameHandler.getInstance().removeServer(server, server.getShutdownProcess().needsMinigameCheck());
+        if (server.getShutdownProcess() != null)
+            server.getShutdownProcess().serverStopped();
         checkStopQueue(server);
     }
 
@@ -289,6 +285,7 @@ public class ServerHandler {
                             restartServer(serverRestartingIterator.getIterator().next());
                             return;
                         }
+
                         restartQueue.remove(serverRestartingIterator.getServerType());
                         for (int i = 0; i < serverRestartingIterator.getSize(); i++) {
                             createServerByServerType(server.getServerType());
@@ -609,13 +606,17 @@ public class ServerHandler {
     }
 
     /**
-     * Will be called, when a server could not start properly.
+     * Will be called, when a server could not start properly or when server crashed.
+     * Will flush out the server from the system.
      * @param server Server - the server that could not start.
      * @since 0.0.1
      */
-    public void serverCouldNotStart(Server server) {
+    public void flushServer(Server server) {
+        ServerDefinition serverDefinitionByPort = getServerDefinitionByPort(server.getServerPort());
         this.servers.remove(server);
         sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()));
-        checkStartQueue(getServerDefinitionByPort(server.getServerPort()));
+        if (serverDefinitionByPort != null)
+            checkStartQueue(serverDefinitionByPort);
+        checkStopQueue(server);
     }
 }

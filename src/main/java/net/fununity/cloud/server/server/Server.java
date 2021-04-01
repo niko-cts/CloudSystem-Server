@@ -56,7 +56,7 @@ public final class Server {
     private final String serverMotd;
     private int maxPlayers;
     private int playerCount;
-    private ServerShutdown removeConfirmation;
+    private ServerShutdown shutdownProcess;
 
     /**
      * Creates a new server instance.
@@ -87,7 +87,7 @@ public final class Server {
         this.serverMotd = motd;
         this.maxPlayers = maxPlayers;
         this.playerCount = 0;
-        this.removeConfirmation = null;
+        this.shutdownProcess = null;
         this.createServerPath();
         this.createIfNotExists();
         this.setServerProperties();
@@ -343,14 +343,14 @@ public final class Server {
     public void start() {
         if (this.serverState == ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_ALREADY_RUNNING);
-            ServerHandler.getInstance().serverCouldNotStart(this);
+            ServerHandler.getInstance().flushServer(this);
             return;
         }
 
         File file = new File(this.serverPath + FILE_START);
         if (!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
-            ServerHandler.getInstance().serverCouldNotStart(this);
+            ServerHandler.getInstance().flushServer(this);
             return;
         }
 
@@ -360,7 +360,7 @@ public final class Server {
             LOG.info(INFO_SERVER_STARTED + this.serverId);
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
-            ServerHandler.getInstance().serverCouldNotStart(this);
+            ServerHandler.getInstance().flushServer(this);
         }
     }
 
@@ -447,8 +447,8 @@ public final class Server {
      * @return IServerShutdown - remove confirmation.
      * @since 0.0.1
      */
-    public ServerShutdown getRemoveConfirmation() {
-        return removeConfirmation;
+    public ServerShutdown getShutdownProcess() {
+        return shutdownProcess;
     }
 
     /**
@@ -456,8 +456,8 @@ public final class Server {
      * Remove confirmation needs to be send from bungee, so the server can finally be stopped.
      * @since 0.0.1
      */
-    public void setReceivedRemoveConfirmation(ServerShutdown shutdown) {
-        this.removeConfirmation = shutdown;
+    public void setShutdownProcess(ServerShutdown shutdownProcess) {
+        this.shutdownProcess = shutdownProcess;
     }
 
     @Override

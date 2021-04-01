@@ -1,23 +1,23 @@
 package net.fununity.cloud.server.command;
 
-import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
 import net.fununity.cloud.server.misc.ServerHandler;
+import net.fununity.cloud.server.server.Server;
 
 /**
- * Command class to call {@link ServerHandler#validate(ServerType)}.
+ * Command class to remove a server, when crashed.
  * @see Command
  * @author Niko
  * @since 0.0.1
  */
-public class ValidateCommand extends Command {
+public class RemoveCommand extends Command {
 
     /**
      * Instantiate this class with the name of a command and with none or specified aliases
      * @since 0.0.1
      */
-    public ValidateCommand() {
-        super("validate", "validate <serverType>", "Disables expire mode.");
+    public RemoveCommand() {
+        super("removeserver", "removeserver <serverId>", "Will flush the server from system. Won't stop the server! Should only be used, when server crashed.");
     }
 
     /**
@@ -31,12 +31,13 @@ public class ValidateCommand extends Command {
             sendCommandUsage();
             return;
         }
-        try {
-            ServerType serverType = ServerType.valueOf(args[0]);
-            ServerHandler.getInstance().validate(serverType);
-            log.info("Expire-Mode disabled on " + serverType);
-        } catch (IllegalArgumentException exception) {
-            sendIllegalServerType();
+
+        Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
+        if(server == null) {
+            sendIllegalServerId(args[0]);
+            return;
         }
+
+        ServerHandler.getInstance().flushServer(server);
     }
 }

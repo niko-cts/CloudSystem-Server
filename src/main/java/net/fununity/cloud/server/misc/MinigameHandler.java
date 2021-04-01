@@ -60,7 +60,7 @@ public class MinigameHandler {
         if (servers.contains(server)) {
             servers.remove(server);
             minigameLobbies.put(server.getServerType(), servers);
-            CloudServer.getLogger().info("Removing a minigame lobby " + server.getServerId());
+            CloudServer.getLogger().info("Removing a minigame lobby " + server.getServerId() + " (CheckToAdd: " + check + ")");
             if (check)
                 checkToAdd(servers.size(), server.getServerType());
         }
@@ -138,11 +138,11 @@ public class MinigameHandler {
     /**
      * Calls {@link MinigameHandler#removeLobby(Server, boolean)}
      * @param server Server - the Server.
-     * @param check boolean - checks if a new lobby should be created
+     * @param needsMinigameCheck boolean - checks if a new lobby should be created
      * @since 0.0.1
      */
-    public void removeServer(Server server, boolean check) {
-        this.removeLobby(server, check);
+    public void removeServer(Server server, boolean needsMinigameCheck) {
+        this.removeLobby(server, needsMinigameCheck);
     }
 
     /**
