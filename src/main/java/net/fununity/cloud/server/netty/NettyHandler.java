@@ -27,6 +27,7 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         ClientHandler.getInstance().registerSendingManager(ctx);
+
     }
 
     @Override
@@ -49,6 +50,7 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         this.receivedEvents.add(event.getUniqueId());
         if (EventSendingManager.DEBUG)
             System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Received " + event);
+
         if (event instanceof CloudEvent) {
             CloudEvent cloudEvent = (CloudEvent) event;
 

@@ -2,8 +2,8 @@ package net.fununity.cloud.server.server;
 
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.server.misc.ServerShutdown;
 import net.fununity.cloud.server.misc.ServerHandler;
+import net.fununity.cloud.server.misc.ServerShutdown;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -263,7 +263,7 @@ public final class Server {
             }
         } catch(IOException e) {
             LOG.warn(ERROR_COULD_NOT_CREATE_DIRECTORIES + e.getMessage());
-            ServerHandler.getInstance().checkStartQueue(ServerHandler.getInstance().getServerDefinitionByPort(serverPort));
+            ServerHandler.getInstance().flushServer(this);
         }
     }
 
@@ -371,12 +371,14 @@ public final class Server {
     public void stop() {
         if (this.serverState != ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_IS_NOT_RUNNING);
+            ServerHandler.getInstance().flushServer(this);
             return;
         }
 
         File file = new File(this.serverPath + FILE_STOP);
         if (!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
+            ServerHandler.getInstance().flushServer(this);
             return;
         }
         try {
@@ -389,6 +391,7 @@ public final class Server {
                 deleteServerContent(Paths.get(this.serverPath).toFile());
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
+            ServerHandler.getInstance().flushServer(this);
         }
     }
 
@@ -454,6 +457,7 @@ public final class Server {
     /**
      * Sets remove confirmation to true.
      * Remove confirmation needs to be send from bungee, so the server can finally be stopped.
+     * @param shutdownProcess {@link ServerShutdown} - the process instance.
      * @since 0.0.1
      */
     public void setShutdownProcess(ServerShutdown shutdownProcess) {
@@ -472,5 +476,6 @@ public final class Server {
     public int hashCode() {
         return Objects.hash(serverId, serverIp, serverPort, serverType, serverPath, serverMaxRam);
     }
+
 
 }

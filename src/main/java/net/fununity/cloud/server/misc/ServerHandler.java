@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class ServerHandler {
 
     public static final Logger LOG = Logger.getLogger(ServerHandler.class.getName());
-    public static final int MAX_RAM = 51200;
+    public static final int MAX_RAM = 42200;
     private static ServerHandler instance;
 
     private final ClientHandler clientHandler;
@@ -72,7 +72,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public List<Server> getServers() {
-        return new ArrayList<>(this.servers);
+        return this.servers;
     }
 
     /**
@@ -129,11 +129,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public Server getServerByIdentifier(String identifier) {
-        for (Server server : this.servers) {
-            if(server.getServerId().equals(identifier))
-                return server;
-        }
-        return null;
+        return servers.stream().filter(server -> server.getServerId().equals(identifier)).findFirst().orElse(null);
     }
 
     /**
@@ -143,8 +139,8 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public String getServerIdentifierByPort(int port) {
-        for (Server server : this.servers) {
-            if(server.getServerPort() == port)
+        for (Server server : getServers()) {
+            if (server.getServerPort() == port)
                 return server.getServerId();
         }
         StringBuilder builder = new StringBuilder();
@@ -182,12 +178,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownServer(Server server) {
-        shutdownServer(server, new ServerShutdown(true) {
-            @Override
-            void serverStopped() {
-                // nothing to do here
-            }
-        });
+        shutdownServer(server, new ServerShutdown(true) {});
     }
 
     /**
@@ -210,8 +201,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownServer(Server server, ServerShutdown shutdown) {
-        if(server == null) return;
-        if (server.getShutdownProcess() == null) {
+        if (server != null && server.getShutdownProcess() == null) {
             server.setShutdownProcess(shutdown);
             sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
         }
@@ -259,8 +249,9 @@ public class ServerHandler {
         this.servers.remove(server);
         if (server.getServerType() == ServerType.LOBBY)
             this.clientHandler.sendLobbyInformationToLobbies();
-        else if (server.getShutdownProcess() != null)
-            MinigameHandler.getInstance().removeServer(server, server.getShutdownProcess().needsMinigameCheck());
+        else
+            MinigameHandler.getInstance().removeServer(server,
+                    server.getShutdownProcess() != null && server.getShutdownProcess().needsMinigameCheck());
         if (server.getShutdownProcess() != null)
             server.getShutdownProcess().serverStopped();
         checkStopQueue(server);
@@ -393,13 +384,9 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServersOfType(ServerType type) {
+        ServerShutdown serverShutdown = new ServerShutdown(false) {};
         for (Server server : getServersByType(type)) {
-            shutdownServer(server, new ServerShutdown(false) {
-                            @Override
-                            public void serverStopped() {
-                                // Nothing to do here
-                            }
-                        });
+            shutdownServer(server, serverShutdown);
         }
     }
 
@@ -409,14 +396,9 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServers() {
-        ServerShutdown shutdownReceived = new ServerShutdown(false) {
-            @Override
-            public void serverStopped() {
-                // nothing to do here
-            }
-        };
+        ServerShutdown serverShutdown = new ServerShutdown(false) {};
         for (Server server : getServers())
-            shutdownServer(server, shutdownReceived);
+            shutdownServer(server, serverShutdown);
     }
 
     /**
@@ -499,6 +481,21 @@ public class ServerHandler {
      */
     public void checkStartQueue(ServerDefinition def) {
         Server server = getServerByIdentifier(def.getServerId());
+        if(this.startQueue.contains(server)) {
+            this.startQueue.remove(server);
+            if(!this.startQueue.isEmpty()) {
+                this.startQueue.peek().start();
+            }
+        }
+    }
+
+    /**
+     * Checks if a server is in the start queue.
+     * If yes: remove it and start the next server.
+     * @param server Server - the server to be checked.
+     * @since 0.0.1
+     */
+    public void checkStartQueue(Server server) {
         if(this.startQueue.contains(server)) {
             this.startQueue.remove(server);
             if(!this.startQueue.isEmpty()) {
@@ -612,11 +609,9 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void flushServer(Server server) {
-        ServerDefinition serverDefinitionByPort = getServerDefinitionByPort(server.getServerPort());
         this.servers.remove(server);
         sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()));
-        if (serverDefinitionByPort != null)
-            checkStartQueue(serverDefinitionByPort);
+        checkStartQueue(server);
         checkStopQueue(server);
     }
 }

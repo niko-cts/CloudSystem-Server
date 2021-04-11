@@ -32,12 +32,11 @@ public class RestartCommand extends Command {
                 log.warn("This servertype can not be restarted!");
                 return;
             }
-
             log.info("Restarting all servers with server type " + serverType);
             ServerHandler.getInstance().restartAllServersOfType(serverType);
         } catch (IllegalArgumentException exception) {
             Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
-            if(server == null) {
+            if (server == null) {
                 sendIllegalIdOrServerType(args[0]);
                 return;
             }

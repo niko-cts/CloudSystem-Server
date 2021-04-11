@@ -60,9 +60,10 @@ public class MinigameHandler {
         if (servers.contains(server)) {
             servers.remove(server);
             minigameLobbies.put(server.getServerType(), servers);
-            CloudServer.getLogger().info("Removing a minigame lobby " + server.getServerId() + " (CheckToAdd: " + check + ")");
-            if (check)
+            CloudServer.getLogger().info("Removing minigame lobby: " + server.getServerId());
+            if (check) {
                 checkToAdd(servers.size(), server.getServerType());
+            }
         }
     }
 
@@ -105,17 +106,17 @@ public class MinigameHandler {
      */
     public void receivedStatusUpdate(CloudEvent event) {
         Server server = ServerHandler.getInstance().getServerByIdentifier(event.getData().get(0).toString());
-        if(server == null) {
+        if (server == null) {
             CloudServer.getLogger().warn("STATUS_MINIGAME Event was sent with unknown id: " + event.getData().get(0));
             return;
         }
 
         String state = event.getData().get(2).toString();
 
-        if(state.equalsIgnoreCase("Lobby"))
+        if (state.equalsIgnoreCase("Lobby"))
             addLobby(server);
         else
-            removeLobby(server, true);
+            removeLobby(server, server.getShutdownProcess() == null || server.getShutdownProcess().needsMinigameCheck());
 
         int maxPlayers = Integer.parseInt(event.getData().get(5).toString());
         server.setMaxPlayers(maxPlayers);

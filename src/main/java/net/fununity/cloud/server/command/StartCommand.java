@@ -11,7 +11,7 @@ public class StartCommand extends Command {
      * @since 0.0.1
      */
     public StartCommand() {
-        super("start", "start <serverType>", "Starts a new server with specified type");
+        super("start", "start <serverType> (<amount>)", "Starts a new server with specified type");
     }
 
     /**
@@ -21,7 +21,7 @@ public class StartCommand extends Command {
      */
     @Override
     public void execute(String[] args) {
-        if(args.length != 1) {
+        if(args.length == 0) {
             sendCommandUsage();
             return;
         }
@@ -37,6 +37,15 @@ public class StartCommand extends Command {
             return;
         }
         log.info("Starting server with server type " + args[0]);
-        ServerHandler.getInstance().createServerByServerType(serverType);
+        int amount = 1;
+        if (args.length == 2) {
+            try {
+                amount = Integer.parseInt(args[1]);
+            } catch (NumberFormatException exception) {
+                sendCommandUsage();
+            }
+        }
+        for (int i = 0; i < amount; i++)
+            ServerHandler.getInstance().createServerByServerType(serverType);
     }
 }
