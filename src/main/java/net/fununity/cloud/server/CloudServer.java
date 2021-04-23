@@ -24,7 +24,6 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 
 public class CloudServer implements Runnable{
@@ -117,13 +116,13 @@ public class CloudServer implements Runnable{
     public void shutdownEverything() {
         ServerHandler.getInstance().shutdownAllServers();
         ClientHandler.getInstance().sendDisconnect("DiscordBot");
-        CloudConsole.getInstance().shutDown();
+        /*CloudConsole.getInstance().shutDown();
         try {
             Runtime.getRuntime().exec("screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill");
             Runtime.getRuntime().exec("exit");
         } catch (IOException e) {
             getLogger().warn(e.getMessage());
         }
-        System.exit(0);
+        System.exit(0);*/
     }
 }

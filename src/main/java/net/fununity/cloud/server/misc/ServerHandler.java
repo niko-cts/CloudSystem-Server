@@ -610,6 +610,7 @@ public class ServerHandler {
      */
     public void flushServer(Server server) {
         this.servers.remove(server);
+        this.clientHandler.removeClient(server.getServerId());
         sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()));
         checkStartQueue(server);
         checkStopQueue(server);

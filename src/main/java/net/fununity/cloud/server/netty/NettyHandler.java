@@ -18,7 +18,7 @@ import java.util.Set;
 
 public class NettyHandler extends ChannelInboundHandlerAdapter {
 
-    private final Set<Long> receivedEvents;
+    private final Set<String> receivedEvents;
 
     public NettyHandler() {
         this.receivedEvents = new HashSet<>();
@@ -27,7 +27,6 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         ClientHandler.getInstance().registerSendingManager(ctx);
-
     }
 
     @Override
@@ -37,11 +36,16 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         Event event = MessagingUtils.convertStreamToEvent((ByteBuf) msg);
 
         if (event == null) {
-            ClientHandler.getInstance().sendResendEvent(ctx);
+            if (ClientHandler.getInstance().getClientId(ctx) != null)
+                ClientHandler.getInstance().sendResendEvent(ctx);
+            else
+                System.err.println("Null event from unknown sender: " + ctx);
             return;
         }
 
         if (receivedEvents.contains(event.getUniqueId())) {
+            if (EventSendingManager.DEBUG)
+                System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Already contains " + event);
             ClientHandler.getInstance().receiverQueueEmptied(ctx);
             ClientHandler.getInstance().openChannel(ctx);
             return;
