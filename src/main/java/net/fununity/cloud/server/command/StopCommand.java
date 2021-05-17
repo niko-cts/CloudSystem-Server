@@ -12,7 +12,7 @@ public class StopCommand extends Command {
      * @since 0.0.1
      */
     public StopCommand() {
-        super("stop", "stop <serverId>/<serverType>", "Stops a specified server or all of one type");
+        super("stop", "stop <serverId>/<serverType>/all", "Stops a specified server or all of one type");
     }
 
     /**
@@ -22,8 +22,13 @@ public class StopCommand extends Command {
      */
     @Override
     public void execute(String[] args) {
-        if(args.length == 0) {
+        if (args.length == 0) {
             sendCommandUsage();
+            return;
+        }
+        if (args[0].equalsIgnoreCase("all")) {
+            log.info("Shutting down servers...");
+            ServerHandler.getInstance().shutdownAllServers();
             return;
         }
         try {

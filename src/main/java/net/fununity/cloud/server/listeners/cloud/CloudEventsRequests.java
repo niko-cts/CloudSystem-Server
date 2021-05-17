@@ -28,8 +28,7 @@ public class CloudEventsRequests implements CloudEventListener {
     public void newCloudEvent(CloudEvent cloudEvent) {
         switch (cloudEvent.getId()) {
             case CloudEvent.REQ_LOBBY_COUNT:
-                CloudEvent event = new CloudEvent(CloudEvent.RES_LOBBY_INFOS);
-                event.addData(serverHandler.getLobbyCount());
+                CloudEvent event = new CloudEvent(CloudEvent.RES_LOBBY_INFOS).addData(serverHandler.getLobbyCount());
                 ChannelHandlerContext ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
                 ClientHandler.getInstance().sendEvent(ctx, event);
                 break;

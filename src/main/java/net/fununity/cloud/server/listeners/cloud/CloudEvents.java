@@ -83,9 +83,14 @@ public class CloudEvents implements CloudEventListener {
                 int playerCount = Integer.parseInt(cloudEvent.getData().get(1).toString());
                 serverHandler.setPlayerCountFromServer(serverId, playerCount);
                 break;
+            case CloudEvent.FORWARD_TO_SERVER:
+                ctx = clientHandler.getClientContext(cloudEvent.getData().get(0).toString());
+                if (ctx != null)
+                   clientHandler.sendEvent(ctx, (CloudEvent) cloudEvent.getData().get(1));
+                break;
             case CloudEvent.FORWARD_TO_LOBBIES:
                 CloudEvent toForward = (CloudEvent) cloudEvent.getData().get(0);
-                if(toForward.getId() == CloudEvent.REQ_FOLLOW_ME) {
+                if (toForward.getId() == CloudEvent.REQ_FOLLOW_ME) {
                     toForward = new CloudEvent(CloudEvent.RES_FOLLOW_ME);
                     for (int i = 0; i < ((CloudEvent) cloudEvent.getData().get(0)).getData().size(); i++)
                         toForward.addData(((CloudEvent) cloudEvent.getData().get(0)).getData().get(i));
@@ -94,18 +99,17 @@ public class CloudEvents implements CloudEventListener {
 
                 if (toForward.getId() == CloudEvent.STATUS_MINIGAME) {
                     MinigameHandler.getInstance().receivedStatusUpdate(toForward);
-                    if(toForward.getData().size() == 7) {
+                    if (toForward.getData().size() == 7) {
                         CloudEvent finalToForward = toForward;
                         lobbyServers.removeIf(server -> !server.getServerId().equals(finalToForward.getData().get(6).toString()));
                     }
                 }
 
-                for(Server server : lobbyServers) {
+                for (Server server : lobbyServers) {
                     ChannelHandlerContext lobbyContext = clientHandler.getClientContext(server.getServerId());
                     if (lobbyContext != null)
                         clientHandler.sendEvent(lobbyContext, toForward);
                 }
-
                 break;
         }
     }

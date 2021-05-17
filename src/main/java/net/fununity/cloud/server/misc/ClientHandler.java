@@ -173,7 +173,7 @@ public class ClientHandler {
             lobbyInformation.put(lobbyServer.getServerId(), lobbyServer.getPlayerCount());
 
         cloudEvent.addData(lobbyInformation);
-        for (Map.Entry<String, ChannelHandlerContext> entry : this.clients.entrySet()) {
+        for (Map.Entry<String, ChannelHandlerContext> entry : getClients().entrySet()) {
             if (entry.getKey().toLowerCase().contains("lobby") || entry.getKey().toLowerCase().contains("main")) {
                 this.sendEvent(entry.getValue(), cloudEvent);
             }
