@@ -42,6 +42,10 @@ public class ServerUtils {
                 return "LandScapes";
             case FREEBUILD:
                 return "FreeBuild";
+            case COCBASE:
+                return "CoCBase";
+            case COCATTACK:
+                return "CoCAttack";
         }
         return "";
     }
@@ -56,6 +60,7 @@ public class ServerUtils {
         switch (serverType) {
             case LANDSCAPES:
             case FREEBUILD:
+            case COCBASE:
                 return 4096;
             case FLOWERWARS2x1:
                 return 256;
@@ -76,6 +81,7 @@ public class ServerUtils {
                 return 120;
             case LANDSCAPES:
             case FREEBUILD:
+            case COCBASE:
                 return 50;
             default:
                 return 30;

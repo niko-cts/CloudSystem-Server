@@ -56,9 +56,13 @@ public class CloudConsole {
      */
     private void run() {
         while (!exit) {
-            Scanner scanner = new Scanner(System.in);
-            String input = scanner.nextLine();
-            this.commandHandler.tryToExecuteCommand(input.split(" "));
+            try {
+                Scanner scanner = new Scanner(System.in);
+                String input = scanner.nextLine();
+                this.commandHandler.tryToExecuteCommand(input.split(" "));
+            } catch (Exception exception) {
+                this.logger.warn(exception.getMessage());
+            }
         }
     }
 

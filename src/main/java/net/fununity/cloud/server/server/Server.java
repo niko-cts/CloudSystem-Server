@@ -330,6 +330,12 @@ public final class Server {
             case FREEBUILD:
                 path.append("FreeBuild/");
                 break;
+            case COCBASE:
+                path.append("ClashOfClubs-Base/");
+                break;
+            case COCATTACK:
+                path.append("ClashOfClubs-Attack/");
+                break;
             default:
                 LOG.warn("Could not create template path for " + this.serverId + "! ServerType is not supported.");
         }
@@ -385,7 +391,7 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD)
+            if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD || this.serverType == ServerType.COCBASE)
                 createBackup();
             else
                 deleteServerContent(Paths.get(this.serverPath).toFile());
