@@ -38,7 +38,7 @@ public class RemoveServerCommand extends Command {
             return;
         }
 
-        ServerHandler.getInstance().flushServer(server);
         log.info("Server was flushed!");
+        ServerHandler.getInstance().flushServer(server);
     }
 }

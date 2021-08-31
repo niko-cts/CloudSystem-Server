@@ -500,7 +500,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void checkStartQueue(Server server) {
-        if(this.startQueue.contains(server)) {
+        if (this.startQueue.contains(server)) {
             this.startQueue.remove(server);
             if(!this.startQueue.isEmpty()) {
                 this.startQueue.peek().start();
