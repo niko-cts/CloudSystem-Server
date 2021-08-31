@@ -106,7 +106,7 @@ public final class Server {
      * @author Marco Hajek
      */
     public Server(String serverId, String serverIp, String maxRam, String motd, int maxPlayers, ServerType serverType){
-        this(serverId, serverIp, ServerHandler.getInstance().getHighestServerPort()+1, maxRam, motd, maxPlayers, serverType);
+        this(serverId, serverIp, ServerHandler.getInstance().getHighestServerPort() + 1, maxRam, motd, maxPlayers, serverType);
     }
 
     /**
@@ -387,9 +387,9 @@ public final class Server {
             ServerHandler.getInstance().flushServer(this);
             return;
         }
+        this.serverState = ServerState.STOPPED;
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
-            this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
             if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD || this.serverType == ServerType.COCBASE)
                 createBackup();

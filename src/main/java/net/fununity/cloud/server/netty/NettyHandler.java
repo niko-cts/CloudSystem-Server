@@ -3,6 +3,7 @@ package net.fununity.cloud.server.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ResourceLeakDetector;
 import net.fununity.cloud.common.events.Event;
 import net.fununity.cloud.common.events.EventSendingManager;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
@@ -36,10 +37,7 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         Event event = MessagingUtils.convertStreamToEvent((ByteBuf) msg);
 
         if (event == null) {
-            if (ClientHandler.getInstance().getClientId(ctx) != null)
-                ClientHandler.getInstance().sendResendEvent(ctx);
-            else
-                System.err.println("Null event from unknown sender: " + ctx);
+            ClientHandler.getInstance().sendResendEvent(ctx);
             return;
         }
 

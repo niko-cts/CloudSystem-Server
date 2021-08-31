@@ -20,7 +20,7 @@ public class CommandHandler {
      */
     public CommandHandler(Logger logger) {
         this.commandList = Arrays.asList(new HelpCommand(), new ServerTypeCommand(), new ListCommand(), new StopCommand(), new BackupCommand(),
-                new RestartCommand(), new InfoCommand(), new StartCommand(), new ExpireCommand(), new ValidateCommand(), new RemoveCommand(), new ExitCommand());
+                new RestartCommand(), new InfoCommand(), new StartCommand(), new ExpireCommand(), new ValidateCommand(), new RemoveServerCommand(), new ExitCommand());
         this.log = logger;
 
     }

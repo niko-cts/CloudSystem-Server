@@ -9,7 +9,6 @@ import net.fununity.cloud.common.utils.CacheType;
 import net.fununity.cloud.server.misc.CacheHandler;
 import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
-import sun.awt.SunHints;
 
 import java.util.UUID;
 

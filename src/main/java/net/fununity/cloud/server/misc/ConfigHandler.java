@@ -155,7 +155,7 @@ public class ConfigHandler {
             Element root = doc.getDocumentElement();
             NodeList defaultServers = root.getElementsByTagName("defaultservers").item(0).getChildNodes();
             List<Server> serverToStart = new ArrayList<>();
-            for(int i = 0; i < defaultServers.getLength(); i++){
+            for (int i = 0; i < defaultServers.getLength(); i++) {
                 Node server = defaultServers.item(i);
                 NodeList children = server.getChildNodes();
                 String id = children.item(0).getTextContent();
@@ -163,9 +163,9 @@ public class ConfigHandler {
                 int port = Integer.parseInt(children.item(2).getTextContent());
                 String maxRam = children.item(3).getTextContent();
                 String motd = children.item(4).getTextContent();
-                int maxPlayers =  Integer.parseInt(children.item(5).getTextContent());
+                int maxPlayers = Integer.parseInt(children.item(5).getTextContent());
                 String type = children.item(6).getTextContent();
-                ServerType serverType = Arrays.stream(ServerType.values()).filter(t-> t.name().equalsIgnoreCase(type)).findFirst().orElse(null);
+                ServerType serverType = Arrays.stream(ServerType.values()).filter(t -> t.name().equalsIgnoreCase(type)).findFirst().orElse(null);
                 serverToStart.add(new Server(id, ip, port, maxRam, motd, maxPlayers, serverType));
             }
             // Niko change: moved under for loop, because when other servers are created

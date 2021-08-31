@@ -10,13 +10,13 @@ import net.fununity.cloud.server.server.Server;
  * @author Niko
  * @since 0.0.1
  */
-public class RemoveCommand extends Command {
+public class RemoveServerCommand extends Command {
 
     /**
      * Instantiate this class with the name of a command and with none or specified aliases
      * @since 0.0.1
      */
-    public RemoveCommand() {
+    public RemoveServerCommand() {
         super("removeserver", "removeserver <serverId>", "Will flush the server from system. Won't stop the server! Should only be used, when server crashed.");
     }
 
@@ -39,5 +39,6 @@ public class RemoveCommand extends Command {
         }
 
         ServerHandler.getInstance().flushServer(server);
+        log.info("Server was flushed!");
     }
 }

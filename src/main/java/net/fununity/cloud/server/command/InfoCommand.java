@@ -30,10 +30,11 @@ public class InfoCommand extends Command {
             sendIllegalServerId(args[0]);
             return;
         }
-        StringBuilder stringBuilder = new StringBuilder();
-        log.info(stringBuilder.append("Info of server ")
-                .append(server.getServerId()).append(": ")
+        log.info(new StringBuilder().append("Info of server ")
+                .append(server.getServerId()).append(":").append(server.getServerPort())
                 .append(server.getServerType()).append(" ")
-                .append(server.getPlayerCount()).append("/").append(server.getMaxPlayers()).append(" ").append(server.getServerMaxRam()).toString());
+                .append(server.getPlayerCount()).append("/").append(server.getMaxPlayers()).append(" ")
+                .append(server.getServerMaxRam()).append(" ")
+                .toString());
     }
 }

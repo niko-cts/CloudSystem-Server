@@ -39,7 +39,7 @@ public class ServerHandler {
      * Default constructor of the server handler.
      * @since 0.0.1
      */
-    private ServerHandler(){
+    private ServerHandler() {
         instance = this;
         PatternLayout layout = new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n");
         LOG.addAppender(new ConsoleAppender(layout));
@@ -166,9 +166,13 @@ public class ServerHandler {
      */
     public int getHighestServerPort() {
         int port = 0;
-        for(Server server : this.servers)
+        for (Server server : this.servers)
             if (server.getServerPort() > port)
                 port = server.getServerPort();
+        for (Server server : this.startQueue) {
+            if (server.getServerPort() > port)
+                port = server.getServerPort();
+        }
         return port;
     }
 
@@ -362,7 +366,7 @@ public class ServerHandler {
 
         int nextNumber = 1;
         for (Server server : serversWithSameType) {
-            if(nextNumber == Integer.parseInt(server.getServerId().replaceAll("[^\\d.]", ""))) {
+            if (nextNumber == Integer.parseInt(server.getServerId().replaceAll("[^\\d.]", ""))) {
                 nextNumber++;
             }
         }
