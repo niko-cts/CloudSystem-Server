@@ -4,6 +4,7 @@ import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.misc.ServerShutdown;
+import net.fununity.cloud.server.misc.ServerUtils;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -241,10 +242,10 @@ public final class Server {
             if (Files.exists(Paths.get(this.serverPath)) && !Files.exists(Paths.get(this.serverPath + FILE_START))) {
                 deleteServerContent(Paths.get(this.serverPath).toFile());
             }
-            if(!Files.exists(Paths.get(this.serverPath))) {
+            if (!Files.exists(Paths.get(this.serverPath))) {
                 LOG.warn(this.serverPath + ERROR_NOT_EXIST_CREATING);
                 Files.createDirectories(Paths.get(this.serverPath));
-                String templatePath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : createTemplatePath();
+                String templatePath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : ServerUtils.createTemplatePath(this.serverType);
                 if (!Files.exists(Paths.get(templatePath))) {
                     LOG.warn(templatePath + ERROR_NOT_EXIST_CREATING);
                     Files.createDirectories(Paths.get(templatePath));
@@ -261,7 +262,7 @@ public final class Server {
                     }
                 });
             }
-        } catch(IOException e) {
+        } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_CREATE_DIRECTORIES + e.getMessage());
             ServerHandler.getInstance().flushServer(this);
         }
@@ -286,60 +287,6 @@ public final class Server {
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_SET_PROPERTIES + e.getMessage());
         }
-    }
-
-    /**
-     * Creates the path for the template directories.
-     * @return String - the path.
-     * @since 0.0.1
-     */
-    private String createTemplatePath() {
-        StringBuilder path = new StringBuilder();
-        path.append("./Servers/Templates/");
-        switch(this.getServerType()){
-            case BUNGEECORD:
-                path.append("BungeeCord/");
-                break;
-            case LOBBY:
-                path.append("Lobby/");
-                break;
-            case MINIGAME:
-                path.append("MiniGame/");
-                break;
-            case CAVEHUNT:
-                path.append("CaveHunt/");
-                break;
-            case FLOWERWARS2x1:
-                path.append("FlowerWars2x1/");
-                break;
-            case FLOWERWARS2x2:
-                path.append("FlowerWars2x2/");
-                break;
-            case FLOWERWARS4x2:
-                path.append("FlowerWars4x2/");
-                break;
-            case BEATINGPIRATES:
-                path.append("BeatingPirates/");
-                break;
-            case PAINTTHESHEEP:
-                path.append("PaintTheSheep/");
-                break;
-            case LANDSCAPES:
-                path.append("Landscapes/");
-                break;
-            case FREEBUILD:
-                path.append("FreeBuild/");
-                break;
-            case COCBASE:
-                path.append("ClashOfClubs-Base/");
-                break;
-            case COCATTACK:
-                path.append("ClashOfClubs-Attack/");
-                break;
-            default:
-                LOG.warn("Could not create template path for " + this.serverId + "! ServerType is not supported.");
-        }
-        return path.toString();
     }
 
     /**

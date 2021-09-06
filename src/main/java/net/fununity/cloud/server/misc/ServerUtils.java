@@ -15,6 +15,62 @@ public class ServerUtils {
     }
 
     /**
+     * Creates the path for the template directories.
+     * @return String - the path.
+     * @since 0.0.1
+     */
+    public static String createTemplatePath(ServerType serverType) {
+        StringBuilder path = new StringBuilder();
+        path.append("./Servers/Templates/");
+        switch(serverType) {
+            case BUNGEECORD:
+                path.append("BungeeCord/");
+                break;
+            case LOBBY:
+                path.append("Lobby/");
+                break;
+            case MINIGAME:
+                path.append("MiniGame/");
+                break;
+            case CAVEHUNT:
+                path.append("CaveHunt/");
+                break;
+            case FLOWERWARS2x1:
+                path.append("FlowerWars2x1/");
+                break;
+            case FLOWERWARS2x2:
+                path.append("FlowerWars2x2/");
+                break;
+            case FLOWERWARS4x2:
+                path.append("FlowerWars4x2/");
+                break;
+            case BEATINGPIRATES:
+                path.append("BeatingPirates/");
+                break;
+            case PAINTTHESHEEP:
+                path.append("PaintTheSheep/");
+                break;
+            case LANDSCAPES:
+                path.append("Landscapes/");
+                break;
+            case FREEBUILD:
+                path.append("FreeBuild/");
+                break;
+            case COCBASE:
+                path.append("ClashOfClubs-Base/");
+                break;
+            case COCATTACK:
+                path.append("ClashOfClubs-Attack/");
+                break;
+            case TTT:
+                path.append("TTT/");
+                break;
+            default:
+        }
+        return path.toString();
+    }
+
+    /**
      * Get the server id of the type.
      * @param serverType {@link ServerType} - the server type.
      * @return String - the server id.
@@ -46,8 +102,11 @@ public class ServerUtils {
                 return "CoCBase";
             case COCATTACK:
                 return "CoCAttack";
+            case TTT:
+                return "TTT";
+            default:
+                return "";
         }
-        return "";
     }
 
     /**
