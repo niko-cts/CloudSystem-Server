@@ -95,9 +95,9 @@ public class ServerHandler {
      * @see Server
      * @since 0.0.1
      */
-    public void setServerIdle(String serverId){
-        for(Server server : this.servers) {
-            if(server.getServerId().equalsIgnoreCase(serverId)) {
+    public void setServerIdle(String serverId) {
+        for (Server server : this.servers) {
+            if (server.getServerId().equalsIgnoreCase(serverId)) {
                 server.setServerState(ServerState.IDLE);
                 createNewServerIfNeeded(server);
             }
@@ -112,12 +112,12 @@ public class ServerHandler {
      */
     private void createNewServerIfNeeded(Server oldServer) {
         int idleServers = 0;
-        for(Server server : this.servers) {
-            if(server != oldServer && server.getServerType() == oldServer.getServerType() && server.getServerState() == ServerState.IDLE)
-                idleServers+=1;
+        for (Server server : this.servers) {
+            if (server != oldServer && server.getServerType() == oldServer.getServerType() && server.getServerState() == ServerState.IDLE)
+                idleServers += 1;
         }
 
-        if(idleServers < 1)
+        if (idleServers < 1)
             this.addServer(new Server(RandomStringUtils.random(16), oldServer.getServerIp(), oldServer.getServerMotd(), oldServer.getServerMotd(), oldServer.getMaxPlayers(), oldServer.getServerType()));
     }
 
@@ -147,7 +147,7 @@ public class ServerHandler {
         for (Server server : this.servers) {
             builder.append("[").append(server.getServerId()).append(":").append(server.getServerPort()).append("]").append(",");
         }
-        LOG.warn("Port " + port + " was not found in the server list, but was requested! All Servers: " + builder.toString());
+        LOG.warn("Port " + port + " was not found in the server list, but was requested! All Servers: " + builder);
         return "";
     }
 
@@ -159,12 +159,16 @@ public class ServerHandler {
     public int getLobbyCount(){
         return (int) this.servers.stream().filter(s-> s.getServerType() == ServerType.LOBBY).count();
     }
+
+
+    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009);
+
     /**
-     * Returns the highest used port considering all known servers.
+     * Returns the next free not used port considering all known servers.
      * @since 0.0.1
      * @return int - the highest port.
      */
-    public int getHighestServerPort() {
+    public int getNextFreeServerPort() {
         int port = 0;
         for (Server server : this.servers)
             if (server.getServerPort() > port)
@@ -173,6 +177,9 @@ public class ServerHandler {
             if (server.getServerPort() > port)
                 port = server.getServerPort();
         }
+        port++;
+        while (BLACKLISTED_PORTS.contains(port))
+            port++;
         return port;
     }
 

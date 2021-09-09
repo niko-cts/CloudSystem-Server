@@ -107,7 +107,7 @@ public final class Server {
      * @author Marco Hajek
      */
     public Server(String serverId, String serverIp, String maxRam, String motd, int maxPlayers, ServerType serverType){
-        this(serverId, serverIp, ServerHandler.getInstance().getHighestServerPort() + 1, maxRam, motd, maxPlayers, serverType);
+        this(serverId, serverIp, ServerHandler.getInstance().getNextFreeServerPort(), maxRam, motd, maxPlayers, serverType);
     }
 
     /**
