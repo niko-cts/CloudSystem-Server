@@ -118,7 +118,7 @@ public class ServerUtils {
     public static int getRamFromType(ServerType serverType) {
         switch (serverType) {
             case LOBBY:
-                return 1024;
+                return 1536;
             case LANDSCAPES:
             case FREEBUILD:
             case COCBASE:

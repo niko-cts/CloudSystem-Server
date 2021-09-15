@@ -161,7 +161,7 @@ public class ServerHandler {
     }
 
 
-    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009);
+    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 30011);
 
     /**
      * Returns the next free not used port considering all known servers.
