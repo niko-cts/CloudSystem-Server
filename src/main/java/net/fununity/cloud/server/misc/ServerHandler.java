@@ -161,7 +161,7 @@ public class ServerHandler {
     }
 
 
-    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 30011);
+    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(30011, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 32002);
 
     /**
      * Returns the next free not used port considering all known servers.
@@ -225,14 +225,13 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void receivedShutdownConfirmation(Server server) {
-        if(server == null) return;
+        if (server == null) return;
         this.clientHandler.sendDisconnect(server.getServerId());
         this.clientHandler.removeClient(server.getServerId());
 
         this.stopQueue.add(server);
-        if (stopQueue.size() == 1) {
+        if (stopQueue.size() == 1)
             deleteServer(server);
-        }
     }
 
     /**
@@ -242,11 +241,9 @@ public class ServerHandler {
      * @since 0.0.1
      */
     private void checkStopQueue(Server server) {
-        if (this.stopQueue.contains(server)) {
-            this.stopQueue.remove(server);
-            if (!this.stopQueue.isEmpty()) {
-                deleteServer(this.stopQueue.peek());
-            }
+        this.stopQueue.remove(server);
+        if (!this.stopQueue.isEmpty()) {
+            deleteServer(this.stopQueue.peek());
         }
     }
 
@@ -255,7 +252,7 @@ public class ServerHandler {
      * @param server Server - the server
      * @since 0.0.1
      */
-    private void deleteServer(Server server) {
+    public void deleteServer(Server server) {
         server.stop();
         this.servers.remove(server);
         if (server.getServerType() == ServerType.LOBBY)

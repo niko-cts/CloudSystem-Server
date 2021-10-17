@@ -63,6 +63,12 @@ public class CloudEvents implements CloudEventListener {
 
                 serverHandler.checkStartQueue(def);
                 break;
+            case CloudEvent.CLIENT_DISCONNECT_GRACEFULLY:
+                String serverId = cloudEvent.getData().get(0).toString();
+                Server server = serverHandler.getServerByIdentifier(serverId);
+                if (server != null && server.getShutdownProcess() == null)
+                    serverHandler.deleteServer(server);
+                break;
             case CloudEvent.FORWARD_TO_BUNGEE:
                 serverHandler.sendToBungeeCord((CloudEvent) cloudEvent.getData().get(0));
                 break;
@@ -75,7 +81,7 @@ public class CloudEvents implements CloudEventListener {
                 serverHandler.receivedShutdownConfirmation(serverHandler.getServerByIdentifier(cloudEvent.getData().get(0).toString()));
                 break;
             case CloudEvent.NOTIFY_IDLE:
-                String serverId = cloudEvent.getData().get(0).toString();
+                serverId = cloudEvent.getData().get(0).toString();
                 serverHandler.setServerIdle(serverId);
                 break;
             case CloudEvent.NOTIFY_SERVER_PLAYER_COUNT:
@@ -101,12 +107,12 @@ public class CloudEvents implements CloudEventListener {
                     MinigameHandler.getInstance().receivedStatusUpdate(toForward);
                     if (toForward.getData().size() == 7) {
                         CloudEvent finalToForward = toForward;
-                        lobbyServers.removeIf(server -> !server.getServerId().equals(finalToForward.getData().get(6).toString()));
+                        lobbyServers.removeIf(s -> !s.getServerId().equals(finalToForward.getData().get(6).toString()));
                     }
                 }
 
-                for (Server server : lobbyServers) {
-                    ChannelHandlerContext lobbyContext = clientHandler.getClientContext(server.getServerId());
+                for (Server s : lobbyServers) {
+                    ChannelHandlerContext lobbyContext = clientHandler.getClientContext(s.getServerId());
                     if (lobbyContext != null)
                         clientHandler.sendEvent(lobbyContext, toForward);
                 }
