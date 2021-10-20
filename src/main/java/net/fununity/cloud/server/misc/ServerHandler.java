@@ -619,8 +619,17 @@ public class ServerHandler {
     public void flushServer(Server server) {
         this.servers.remove(server);
         this.clientHandler.removeClient(server.getServerId());
+        server.delete();
         sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()));
         checkStartQueue(server);
         checkStopQueue(server);
+    }
+
+    public Queue<Server> getStopQueue() {
+        return new LinkedList<>(stopQueue);
+    }
+
+    public Queue<Server> getStartQueue() {
+        return new LinkedList<>(startQueue);
     }
 }

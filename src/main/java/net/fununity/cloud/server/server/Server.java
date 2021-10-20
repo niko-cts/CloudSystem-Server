@@ -338,14 +338,21 @@ public final class Server {
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD || this.serverType == ServerType.COCBASE)
-                createBackup();
-            else
-                deleteServerContent(Paths.get(this.serverPath).toFile());
+            delete();
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
             ServerHandler.getInstance().flushServer(this);
         }
+    }
+
+    /**
+     * Deletes the server content stuff.
+     * @since 0.0.1
+     */
+    public void delete() {
+        if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD || this.serverType == ServerType.COCBASE)
+            createBackup();
+        deleteServerContent(Paths.get(this.serverPath).toFile());
     }
 
     /**

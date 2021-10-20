@@ -4,6 +4,7 @@ import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
 import net.fununity.cloud.server.misc.ServerHandler;
+import net.fununity.cloud.server.server.Server;
 
 import java.util.List;
 
@@ -39,5 +40,22 @@ public class ListCommand extends Command {
         for (ServerDefinition serverDefinition : serverDefinitions)
             builder.append(serverDefinition.getServerId()).append("(").append(serverDefinition.getCurrentPlayers()).append("), ");
         log.info(builder.toString());
+
+        if (!ServerHandler.getInstance().getStartQueue().isEmpty()) {
+            builder = new StringBuilder();
+            builder.append("In start queue: ");
+            for (Server server : ServerHandler.getInstance().getStartQueue()) {
+                builder.append(server.getServerId()).append(", ");
+            }
+            log.info(builder.toString());
+        }
+        if (!ServerHandler.getInstance().getStopQueue().isEmpty()) {
+            builder = new StringBuilder();
+            builder.append("In stop queue: ");
+            for (Server server : ServerHandler.getInstance().getStopQueue()) {
+                builder.append(server.getServerId()).append(", ");
+            }
+            log.info(builder.toString());
+        }
     }
 }
