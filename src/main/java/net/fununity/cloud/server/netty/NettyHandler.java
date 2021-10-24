@@ -3,7 +3,6 @@ package net.fununity.cloud.server.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.util.ResourceLeakDetector;
 import net.fununity.cloud.common.events.Event;
 import net.fununity.cloud.common.events.EventSendingManager;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
@@ -14,15 +13,16 @@ import net.fununity.cloud.server.misc.ClientHandler;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 public class NettyHandler extends ChannelInboundHandlerAdapter {
 
-    private final Set<String> receivedEvents;
+    private static final int MAX_CACHED_EVENTS = 200;
+    private final List<String> receivedEvents;
 
     public NettyHandler() {
-        this.receivedEvents = new HashSet<>();
+        this.receivedEvents = new ArrayList<>();
     }
 
     @Override
@@ -50,6 +50,9 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         }
 
         this.receivedEvents.add(event.getUniqueId());
+        if (receivedEvents.size() > MAX_CACHED_EVENTS)
+            receivedEvents.remove(0);
+
         if (EventSendingManager.DEBUG)
             System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Received " + event);
 

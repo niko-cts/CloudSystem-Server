@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 /**
  * Abstract class to define the basic server instance.
@@ -245,20 +244,24 @@ public final class Server {
             if (!Files.exists(Paths.get(this.serverPath))) {
                 LOG.warn(this.serverPath + ERROR_NOT_EXIST_CREATING);
                 Files.createDirectories(Paths.get(this.serverPath));
-                String templatePath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : ServerUtils.createTemplatePath(this.serverType);
-                if (!Files.exists(Paths.get(templatePath))) {
-                    LOG.warn(templatePath + ERROR_NOT_EXIST_CREATING);
-                    Files.createDirectories(Paths.get(templatePath));
+                String copyPath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : ServerUtils.createTemplatePath(this.serverType);
+                if (!Files.exists(Paths.get(copyPath))) {
+                    LOG.warn(copyPath + ERROR_NOT_EXIST_CREATING);
+                    Files.createDirectories(Paths.get(copyPath));
                 }
-                LOG.info(INFO_COPY_TEMPLATE_FOR + this.serverId);
-                Path src = Paths.get(templatePath);
+                if (copyPath.equals(backupPath)) {
+                    LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
+                } else {
+                    LOG.info(INFO_COPY_TEMPLATE_FOR + this.serverId);
+                }
+                Path src = Paths.get(copyPath);
                 Path dest = Paths.get(this.serverPath);
-                Stream<Path> files = Files.walk(Paths.get(templatePath));
-                files.forEach(file -> {
+                Files.walk(Paths.get(copyPath)).forEach(file -> {
                     try {
                         Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
                     } catch (IOException e) {
                         LOG.warn("Could not copy file: " + file.toAbsolutePath() + " (" + e.getMessage() + ")");
+                        e.printStackTrace();
                     }
                 });
             }
@@ -279,6 +282,7 @@ public final class Server {
                 writer.write("server-port=" + this.serverPort+ "\n");
                 writer.write("motd=" + this.serverMotd + "\n");
                 writer.write("max-players=" + this.maxPlayers + "\n");
+                writer.write("allow-flight=true\n");
                 writer.write("online-mode=false\n");
                 writer.write("allow-nether=false\n");
                 writer.flush();
@@ -351,15 +355,16 @@ public final class Server {
      */
     public void delete() {
         if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD || this.serverType == ServerType.COCBASE)
-            createBackup();
-        deleteServerContent(Paths.get(this.serverPath).toFile());
+            moveToBackup();
+        else
+            deleteServerContent(Paths.get(this.serverPath).toFile());
     }
 
     /**
-     * Creates a backup from the current server path.
+     * Moves the current server to the backup path.
      * @since 0.0.1
      */
-    public void createBackup() {
+    public void moveToBackup() {
         try {
             if (!Files.exists(Paths.get(this.backupPath))) {
                 LOG.warn(this.backupPath + ERROR_NOT_EXIST_CREATING);
@@ -368,12 +373,12 @@ public final class Server {
             LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
             Path src = Paths.get(this.serverPath);
             Path dest = Paths.get(this.backupPath);
-            Stream<Path> files = Files.walk(src);
-            files.forEach(file -> {
+            deleteServerContent(dest.toFile());
+            Files.walk(src).forEach(file -> {
                 try {
-                    Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+                    Files.move(file, dest.resolve(src.relativize(file)));
                 } catch (IOException e) {
-                    LOG.warn("Could not copy file: " + file.toAbsolutePath());
+                    LOG.warn("Could not move file: " + e.getMessage());
                 }
             });
         } catch (IOException e) {

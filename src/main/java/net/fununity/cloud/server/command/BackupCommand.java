@@ -36,6 +36,6 @@ public class BackupCommand extends Command {
             sendIllegalServerId(args[0]);
             return;
         }
-        server.createBackup();
+        server.moveToBackup();
     }
 }
