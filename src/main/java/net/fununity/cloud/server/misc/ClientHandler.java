@@ -98,7 +98,6 @@ public class ClientHandler {
 
     /**
      * Removes a client based on the given client id.
-     *
      * @param clientId String - the client id.
      * @since 0.0.1
      */
@@ -115,7 +114,7 @@ public class ClientHandler {
      */
     public void removeClient(ChannelHandlerContext ctx) {
         for (Map.Entry<String, ChannelHandlerContext> entry : new ConcurrentHashMap<>(clients).entrySet()) {
-            if (entry.getValue() == ctx) {
+            if (entry.getValue().equals(ctx)) {
                 this.clients.remove(entry.getKey());
                 EventSendingManager eventSendingManager = this.eventSenderMap.getOrDefault(entry.getValue(), null);
                 if (eventSendingManager != null) {
@@ -150,7 +149,6 @@ public class ClientHandler {
 
     /**
      * Sends a disconnect message to a specific client.
-     *
      * @param clientId String - the client id.
      * @since 0.0.1
      */

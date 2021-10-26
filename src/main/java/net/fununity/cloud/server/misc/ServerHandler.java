@@ -7,6 +7,7 @@ import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.server.Server;
+import net.fununity.cloud.server.server.ServerDeleter;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -61,7 +62,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public static ServerHandler getInstance(){
-        if(instance == null)
+        if (instance == null)
             instance = new ServerHandler();
         return instance;
     }
@@ -161,7 +162,7 @@ public class ServerHandler {
     }
 
 
-    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(30011, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 32002);
+    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(30004, 30011, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 32002);
 
     /**
      * Returns the next free not used port considering all known servers.
@@ -183,14 +184,6 @@ public class ServerHandler {
         return port;
     }
 
-    /**
-     * Shuts the server with the given server id down.
-     * @param server Server - The server.
-     * @since 0.0.1
-     */
-    public void shutdownServer(Server server) {
-        shutdownServer(server, new ServerShutdown(true) {});
-    }
 
     /**
      * Get the ram that is been used from the server
@@ -205,13 +198,23 @@ public class ServerHandler {
         return ram;
     }
 
+
+    /**
+     * Shuts the server with the given server id down.
+     * @param server Server - The server.
+     * @since 0.0.1
+     */
+    public void initShutdownProcess(Server server) {
+        initShutdownProcess(server, new ServerShutdown(true) {});
+    }
+
     /**
      * Shuts the server with the given server id down.
      * @param server Server - The server.
      * @param shutdown {@link ServerShutdown} - Interface which will be executed, when remove confirmation was sent.
      * @since 0.0.1
      */
-    public void shutdownServer(Server server, ServerShutdown shutdown) {
+    public void initShutdownProcess(Server server, ServerShutdown shutdown) {
         if (server != null && server.getShutdownProcess() == null) {
             server.setShutdownProcess(shutdown);
             sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
@@ -224,46 +227,37 @@ public class ServerHandler {
      * @param server Server - the server that will be stopped
      * @since 0.0.1
      */
-    public void receivedShutdownConfirmation(Server server) {
+    public void addStopQueue(Server server) {
+        System.out.println("debug server add stop " + server);
         if (server == null) return;
-        this.clientHandler.sendDisconnect(server.getServerId());
-        this.clientHandler.removeClient(server.getServerId());
-
         this.stopQueue.add(server);
         if (stopQueue.size() == 1)
-            deleteServer(server);
+            stopServerFinally(server);
     }
 
     /**
      * Removes the server from the queue.
-     * Calls {@link #deleteServer(Server)} to the next server in queue.
+     * Calls {@link ServerHandler#stopServerFinally(Server)} to the next server in queue.
      * @param server Server - the server to delete.
      * @since 0.0.1
      */
-    private void checkStopQueue(Server server) {
+    public void checkStopQueue(Server server) {
         this.stopQueue.remove(server);
         if (!this.stopQueue.isEmpty()) {
-            deleteServer(this.stopQueue.peek());
+            stopServerFinally(this.stopQueue.peek());
         }
     }
 
     /**
-     * Delets a server completely.
-     * @param server Server - the server
+     * Calls {@link ClientHandler#sendDisconnect(String)} and {@link Server#stop()} to finally stop the server.
+     * @param server Server - the server to stop.
      * @since 0.0.1
      */
-    public void deleteServer(Server server) {
+    public void stopServerFinally(Server server) {
+        this.clientHandler.sendDisconnect(server.getServerId());
         server.stop();
-        this.servers.remove(server);
-        if (server.getServerType() == ServerType.LOBBY)
-            this.clientHandler.sendLobbyInformationToLobbies();
-        else
-            MinigameHandler.getInstance().removeServer(server,
-                    server.getShutdownProcess() != null && server.getShutdownProcess().needsMinigameCheck());
-        if (server.getShutdownProcess() != null)
-            server.getShutdownProcess().serverStopped();
-        checkStopQueue(server);
     }
+
 
     /**
      * Restarts a specified server.
@@ -271,7 +265,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void restartServer(Server server) {
-        shutdownServer(server, new ServerShutdown(false) {
+        initShutdownProcess(server, new ServerShutdown(false) {
                     @Override
                     public void serverStopped() {
                         if (!restartQueue.containsKey(server.getServerType())) {
@@ -334,7 +328,7 @@ public class ServerHandler {
      */
     public List<ServerDefinition> generateServerDefinitions() {
         List<ServerDefinition> definitions = new ArrayList<>();
-        for(Server server : this.servers) {
+        for (Server server : this.servers) {
             definitions.add(new ServerDefinition(server.getServerId(), server.getServerIp(), server.getServerMaxRam(), server.getServerMotd(), server.getMaxPlayers(), server.getPlayerCount(), server.getServerPort(), server.getServerType(), server.getServerState()));
         }
         return definitions;
@@ -394,7 +388,7 @@ public class ServerHandler {
     public void shutdownAllServersOfType(ServerType type) {
         ServerShutdown serverShutdown = new ServerShutdown(false) {};
         for (Server server : getServersByType(type)) {
-            shutdownServer(server, serverShutdown);
+            initShutdownProcess(server, serverShutdown);
         }
     }
 
@@ -406,7 +400,7 @@ public class ServerHandler {
     public void shutdownAllServers() {
         ServerShutdown serverShutdown = new ServerShutdown(false) {};
         for (Server server : getServers())
-            shutdownServer(server, serverShutdown);
+            initShutdownProcess(server, serverShutdown);
     }
 
     /**
@@ -445,7 +439,7 @@ public class ServerHandler {
 
         sendToBungeeCord(event);
 
-        if(sendingPlayers.size() > 0) {
+        if (sendingPlayers.size() > 0) {
             blackListLobbies.add(lobby);
             sendPlayerToLobby(blackListLobbies, sendingPlayers);
         }
@@ -471,12 +465,12 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void addToStartQueue(Server server) {
-        if(server.getServerType() == ServerType.BUNGEECORD) {
+        if (server.getServerType() == ServerType.BUNGEECORD) {
             server.start();
             return;
         }
         this.startQueue.add(server);
-        if(startQueue.size() == 1) {
+        if (startQueue.size() == 1) {
             server.start();
         }
     }
@@ -489,7 +483,7 @@ public class ServerHandler {
      */
     public void checkStartQueue(ServerDefinition def) {
         Server server = getServerByIdentifier(def.getServerId());
-        if(this.startQueue.contains(server)) {
+        if (this.startQueue.contains(server)) {
             this.startQueue.remove(server);
             if(!this.startQueue.isEmpty()) {
                 this.startQueue.peek().start();
@@ -617,19 +611,25 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void flushServer(Server server) {
-        this.servers.remove(server);
         this.clientHandler.removeClient(server.getServerId());
-        server.delete();
+        new ServerDeleter(server);
         sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()));
         checkStartQueue(server);
-        checkStopQueue(server);
     }
 
     public Queue<Server> getStopQueue() {
         return new LinkedList<>(stopQueue);
     }
 
+    public Set<ServerType> getRestartQueue() {
+        return restartQueue.keySet();
+    }
+
     public Queue<Server> getStartQueue() {
         return new LinkedList<>(startQueue);
+    }
+
+    public ClientHandler getClientHandler() {
+        return clientHandler;
     }
 }

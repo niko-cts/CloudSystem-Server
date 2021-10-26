@@ -42,15 +42,20 @@ public final class Server {
     private static final String FILE_STOP = "stop.sh";
     private static final String FILE_SERVER_PROPERTIES = "server.properties";
 
-    private static final Logger LOG = Logger.getLogger(Server.class);
-    private static boolean LOG_CONFIGURED = false;
+    protected static final Logger LOG = Logger.getLogger(Server.class);
+
+    static {
+        LOG.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
+        LOG.setAdditivity(false);
+        LOG.setLevel(Level.INFO);
+    }
 
     private final String serverId;
     private final String serverIp;
     private final int serverPort;
     private final ServerType serverType;
     private ServerState serverState;
-    private String serverPath;
+    protected String serverPath;
     private String backupPath;
     private final String serverMaxRam;
     private final String serverMotd;
@@ -71,12 +76,6 @@ public final class Server {
      * @author Marco Hajek
      */
     public Server(String serverId, String serverIp, int serverPort, String maxRam, String motd, int maxPlayers, ServerType serverType) {
-        if(!LOG_CONFIGURED) {
-            LOG.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
-            LOG.setAdditivity(false);
-            LOG.setLevel(Level.INFO);
-            LOG_CONFIGURED = true;
-        }
 
         this.serverId = serverId;
         this.serverIp = serverIp;
@@ -212,7 +211,7 @@ public final class Server {
         if (serverType == ServerType.LOBBY && playerCount == 0 && !serverId.equals("Lobby01") && !serverId.equals("Lobby02") &&
                     ServerHandler.getInstance().getPlayerCountOfNetwork() + getMaxPlayers() < ServerHandler.getInstance().getLobbyServers().stream()
                             .mapToInt(Server::getMaxPlayers).sum()) {
-                ServerHandler.getInstance().shutdownServer(this);
+                ServerHandler.getInstance().initShutdownProcess(this);
         }
     }
 
@@ -342,7 +341,7 @@ public final class Server {
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            delete();
+            new ServerDeleter(this);
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
             ServerHandler.getInstance().flushServer(this);
@@ -350,40 +349,28 @@ public final class Server {
     }
 
     /**
-     * Deletes the server content stuff.
-     * @since 0.0.1
-     */
-    public void delete() {
-        if (this.serverType == ServerType.LANDSCAPES || this.serverType == ServerType.FREEBUILD || this.serverType == ServerType.COCBASE)
-            moveToBackup();
-        else
-            deleteServerContent(Paths.get(this.serverPath).toFile());
-    }
-
-    /**
      * Moves the current server to the backup path.
      * @since 0.0.1
      */
-    public void moveToBackup() {
-        try {
-            if (!Files.exists(Paths.get(this.backupPath))) {
-                LOG.warn(this.backupPath + ERROR_NOT_EXIST_CREATING);
-                Files.createDirectories(Paths.get(this.backupPath));
-            }
-            LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
-            Path src = Paths.get(this.serverPath);
-            Path dest = Paths.get(this.backupPath);
-            deleteServerContent(dest.toFile());
-            Files.walk(src).forEach(file -> {
-                try {
-                    Files.move(file, dest.resolve(src.relativize(file)));
-                } catch (IOException e) {
-                    LOG.warn("Could not move file: " + e.getMessage());
-                }
-            });
-        } catch (IOException e) {
-            LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
+    public void moveToBackup(boolean copy) throws IOException {
+        if (!Files.exists(Paths.get(this.backupPath))) {
+            LOG.warn(this.backupPath + ERROR_NOT_EXIST_CREATING);
+            Files.createDirectories(Paths.get(this.backupPath));
         }
+        LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
+        Path src = Paths.get(this.serverPath);
+        Path dest = Paths.get(this.backupPath);
+        deleteServerContent(dest.toFile());
+        Files.walk(src).forEach(file -> {
+            try {
+                if (copy)
+                    Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+                else
+                    Files.move(file, dest.resolve(src.relativize(file)));
+            } catch (IOException e) {
+                LOG.warn("Could not move file: " + e.getMessage());
+            }
+        });
     }
 
     /**
@@ -391,7 +378,7 @@ public final class Server {
      * @param content File - the file to be deleted.
      * @since 0.0.1
      */
-    private void deleteServerContent(File content) {
+    protected void deleteServerContent(File content) throws IOException {
         File[] allContents = content.listFiles();
         if (allContents != null) {
             for (File file : allContents) {

@@ -26,7 +26,7 @@ public class ListCommand extends Command {
     @Override
     public void execute(String[] args) {
         List<ServerDefinition> serverDefinitions = ServerHandler.getInstance().generateServerDefinitions();
-        if(args.length == 1) {
+        if (args.length == 1) {
             try {
                 ServerType serverType = ServerType.valueOf(args[0]);
                 serverDefinitions.removeIf(d -> d.getServerType() != serverType);
@@ -54,6 +54,14 @@ public class ListCommand extends Command {
             builder.append("In stop queue: ");
             for (Server server : ServerHandler.getInstance().getStopQueue()) {
                 builder.append(server.getServerId()).append(", ");
+            }
+            log.info(builder.toString());
+        }
+        if (!ServerHandler.getInstance().getRestartQueue().isEmpty()) {
+            builder = new StringBuilder();
+            builder.append("In restart queue: ");
+            for (ServerType server : ServerHandler.getInstance().getRestartQueue()) {
+                builder.append(server).append(", ");
             }
             log.info(builder.toString());
         }

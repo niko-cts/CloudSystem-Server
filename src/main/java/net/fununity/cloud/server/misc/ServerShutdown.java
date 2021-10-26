@@ -18,9 +18,7 @@ public abstract class ServerShutdown {
      * Server was stopped.
      * @since 0.0.1
      */
-    public void serverStopped() {
-        // nothing to do here
-    }
+    public void serverStopped() {}
 
     /**
      * A minigame check needs to happen in the stopping process.
