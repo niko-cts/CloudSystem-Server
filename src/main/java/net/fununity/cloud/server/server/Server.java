@@ -361,16 +361,11 @@ public final class Server {
         Path src = Paths.get(this.serverPath);
         Path dest = Paths.get(this.backupPath);
         deleteServerContent(dest.toFile());
-        Files.walk(src).forEach(file -> {
-            try {
-                if (copy)
-                    Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-                else
-                    Files.move(file, dest.resolve(src.relativize(file)));
-            } catch (IOException e) {
-                LOG.warn("Could not move file: " + e.getMessage());
-            }
-        });
+
+        if (copy)
+            Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+        else
+            Files.move(src, dest);
     }
 
     /**
@@ -382,7 +377,10 @@ public final class Server {
         File[] allContents = content.listFiles();
         if (allContents != null) {
             for (File file : allContents) {
-                deleteServerContent(file);
+                if (file.isDirectory())
+                    deleteServerContent(file);
+                else
+                    file.delete();
             }
         }
         content.delete();

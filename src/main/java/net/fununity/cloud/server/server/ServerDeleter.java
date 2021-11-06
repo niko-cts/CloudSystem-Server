@@ -25,7 +25,7 @@ public class ServerDeleter extends TimerTask {
      */
     public ServerDeleter(Server server) {
         this.server = server;
-        new Timer().schedule(this, 100);
+        new Timer().schedule(this, 200);
     }
 
     /**
