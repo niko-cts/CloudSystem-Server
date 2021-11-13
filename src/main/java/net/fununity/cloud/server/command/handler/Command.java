@@ -21,6 +21,8 @@ public abstract class Command {
     /**
      * Instantiate this class with the name of a command and with none or specified aliases
      * @param name String - Name of command
+     * @param usage String - usage of command
+     * @param description String - description of command
      * @param aliases String[] - Aliases of command
      * @since 0.0.1
      */
