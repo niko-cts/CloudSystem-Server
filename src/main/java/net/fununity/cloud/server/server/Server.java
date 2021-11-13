@@ -2,6 +2,7 @@ package net.fununity.cloud.server.server;
 
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
+import net.fununity.cloud.common.utils.DebugLoggerUtil;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.misc.ServerShutdown;
 import net.fununity.cloud.server.misc.ServerUtils;
@@ -245,12 +246,14 @@ public final class Server {
                 Files.createDirectories(Paths.get(this.serverPath));
                 String copyPath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : ServerUtils.createTemplatePath(this.serverType);
                 if (!Files.exists(Paths.get(copyPath))) {
-                    LOG.warn(copyPath + ERROR_NOT_EXIST_CREATING);
+                    DebugLoggerUtil.getInstance().warn(copyPath + ERROR_NOT_EXIST_CREATING);
                     Files.createDirectories(Paths.get(copyPath));
                 }
                 if (copyPath.equals(backupPath)) {
+                    DebugLoggerUtil.getInstance().info(INFO_COPY_BACKUP_FOR + this.serverId);
                     LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
                 } else {
+                    DebugLoggerUtil.getInstance().info(INFO_COPY_TEMPLATE_FOR + this.serverId);
                     LOG.info(INFO_COPY_TEMPLATE_FOR + this.serverId);
                 }
                 Path src = Paths.get(copyPath);
@@ -259,6 +262,7 @@ public final class Server {
                     try {
                         Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
                     } catch (IOException e) {
+                        DebugLoggerUtil.getInstance().warn("Could not copy file: " + file.toAbsolutePath() + " (" + e.getMessage() + ")");
                         LOG.warn("Could not copy file: " + file.toAbsolutePath() + " (" + e.getMessage() + ")");
                         e.printStackTrace();
                     }
@@ -305,6 +309,7 @@ public final class Server {
 
         File file = new File(this.serverPath + FILE_START);
         if (!file.exists()) {
+            DebugLoggerUtil.getInstance().warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
             ServerHandler.getInstance().flushServer(this);
             return;
@@ -314,8 +319,11 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverPath + " " + this.serverId + " " + this.serverMaxRam);
             this.serverState = ServerState.RUNNING;
             LOG.info(INFO_SERVER_STARTED + this.serverId);
+            DebugLoggerUtil.getInstance().info(INFO_SERVER_STARTED + this.serverId);
+
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
+            DebugLoggerUtil.getInstance().warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
             ServerHandler.getInstance().flushServer(this);
         }
     }
@@ -327,6 +335,7 @@ public final class Server {
     public void stop() {
         if (this.serverState != ServerState.RUNNING) {
             LOG.warn(ERROR_SERVER_IS_NOT_RUNNING);
+            DebugLoggerUtil.getInstance().warn(ERROR_SERVER_IS_NOT_RUNNING);
             ServerHandler.getInstance().flushServer(this);
             return;
         }
@@ -334,6 +343,7 @@ public final class Server {
         File file = new File(this.serverPath + FILE_STOP);
         if (!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
+            DebugLoggerUtil.getInstance().warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
             ServerHandler.getInstance().flushServer(this);
             return;
         }
@@ -341,6 +351,7 @@ public final class Server {
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
+            DebugLoggerUtil.getInstance().info(INFO_SERVER_STOPPED + this.serverId);
             new ServerDeleter(this);
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());

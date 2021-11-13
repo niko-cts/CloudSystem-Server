@@ -2,22 +2,21 @@ package net.fununity.cloud.server.netty;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.SimpleChannelInboundHandler;
 import net.fununity.cloud.common.events.Event;
-import net.fununity.cloud.common.events.EventSendingManager;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.discord.DiscordEvent;
+import net.fununity.cloud.common.utils.DebugLoggerUtil;
 import net.fununity.cloud.common.utils.MessagingUtils;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
 
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NettyHandler extends ChannelInboundHandlerAdapter {
+public class NettyHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
+    private static final DebugLoggerUtil LOGGER = DebugLoggerUtil.getInstance();
     private static final int MAX_CACHED_EVENTS = 200;
     private final List<String> receivedEvents;
 
@@ -31,10 +30,10 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
         ClientHandler.getInstance().closeChannel(ctx);
 
-        Event event = MessagingUtils.convertStreamToEvent((ByteBuf) msg);
+        Event event = MessagingUtils.convertStreamToEvent(msg);
 
         if (event == null) {
             ClientHandler.getInstance().sendResendEvent(ctx);
@@ -42,8 +41,7 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         }
 
         if (receivedEvents.contains(event.getUniqueId())) {
-            if (EventSendingManager.DEBUG)
-                System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Already contains " + event);
+            LOGGER.info(getPrefix(ctx) + "Already contains " + event);
             ClientHandler.getInstance().receiverQueueEmptied(ctx);
             ClientHandler.getInstance().openChannel(ctx);
             return;
@@ -53,8 +51,7 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
         if (receivedEvents.size() > MAX_CACHED_EVENTS)
             receivedEvents.remove(0);
 
-        if (EventSendingManager.DEBUG)
-            System.out.println(getPrefix(ClientHandler.getInstance().getClientId(ctx)) + "Received " + event);
+        LOGGER.info(getPrefix(ctx) + "Received " + event);
 
         if (event instanceof CloudEvent) {
             CloudEvent cloudEvent = (CloudEvent) event;
@@ -81,13 +78,13 @@ public class NettyHandler extends ChannelInboundHandlerAdapter {
     }
 
     /**
-     * Gets the prefix for the info
-     * @return String - prefix
+     * Gets the prefix for debug info.
+     * @param ctx ChannelHandlerContext - the channel the event was send.
+     * @return String - the prefix.
      * @since 0.0.1
      */
-    private String getPrefix(String clientId) {
-        OffsetDateTime now = OffsetDateTime.now();
-        return new StringBuilder().append("[").append(now.format(DateTimeFormatter.ISO_TIME)).append("] NettyHandler-").append(clientId).append(" [INFO]: ").toString();
+    private String getPrefix(ChannelHandlerContext ctx) {
+        return new StringBuilder().append("NettyHandler-").append(ClientHandler.getInstance().getClientId(ctx)).append(": ").toString();
     }
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {

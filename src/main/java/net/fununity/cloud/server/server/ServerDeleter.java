@@ -1,6 +1,7 @@
 package net.fununity.cloud.server.server;
 
 import net.fununity.cloud.common.server.ServerType;
+import net.fununity.cloud.common.utils.DebugLoggerUtil;
 import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 
@@ -41,6 +42,7 @@ public class ServerDeleter extends TimerTask {
                 server.deleteServerContent(Paths.get(server.serverPath).toFile());
         } catch (IOException exception) {
             Server.LOG.warn("Error while deleting server: " + exception.getMessage());
+            DebugLoggerUtil.getInstance().warn("Error while deleting server: " + exception.getMessage());
         }
 
         ServerHandler.getInstance().getServers().remove(server);
@@ -56,7 +58,7 @@ public class ServerDeleter extends TimerTask {
         if (server.getShutdownProcess() != null)
             server.getShutdownProcess().serverStopped();
 
-        Server.LOG.info(server.getServerId() + " fully stopped.");
+        DebugLoggerUtil.getInstance().info(server.getServerId() + " fully stopped.");
 
         ServerHandler.getInstance().checkStopQueue(server);
     }

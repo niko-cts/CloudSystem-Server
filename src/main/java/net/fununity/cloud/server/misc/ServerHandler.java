@@ -228,7 +228,6 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void addStopQueue(Server server) {
-        System.out.println("debug server add stop " + server);
         if (server == null) return;
         this.stopQueue.add(server);
         if (stopQueue.size() == 1)
