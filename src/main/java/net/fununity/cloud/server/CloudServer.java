@@ -8,13 +8,10 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import net.fununity.cloud.common.events.cloud.CloudEventManager;
-import net.fununity.cloud.common.events.discord.DiscordEventManager;
 import net.fununity.cloud.server.command.CloudConsole;
 import net.fununity.cloud.server.listeners.cloud.CloudEvents;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsCache;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsRequests;
-import net.fununity.cloud.server.listeners.discord.DiscordEvents;
-import net.fununity.cloud.server.listeners.discord.DiscordEventsRequests;
 import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ConfigHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
@@ -40,9 +37,7 @@ public class CloudServer implements Runnable{
         LOG.addAppender(new ConsoleAppender(layout));
         LOG.setLevel(Level.INFO);
         LOG.setAdditivity(false);
-        INSTANCE = new CloudServer();
-        Thread t = new Thread(INSTANCE);
-        t.start();
+        new Thread(new CloudServer()).start();
         ConfigHandler.getInstance();
         CloudConsole.getInstance();
     }
@@ -53,9 +48,8 @@ public class CloudServer implements Runnable{
 
 
     private final CloudEventManager cloudEventManager = new CloudEventManager();
-    private final DiscordEventManager discordEventManager = new DiscordEventManager();
 
-    public CloudServer(){
+    private CloudServer(){
         INSTANCE = this;
     }
 
@@ -64,8 +58,6 @@ public class CloudServer implements Runnable{
         this.cloudEventManager.addCloudListener(new CloudEvents());
         this.cloudEventManager.addCloudListener(new CloudEventsCache());
         this.cloudEventManager.addCloudListener(new CloudEventsRequests());
-        this.discordEventManager.addDiscordListener(new DiscordEvents());
-        this.discordEventManager.addDiscordListener(new DiscordEventsRequests());
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(group);
@@ -97,16 +89,6 @@ public class CloudServer implements Runnable{
      */
     public CloudEventManager getCloudEventManager(){
         return this.cloudEventManager;
-    }
-
-    /**
-     * Gets the discord event manager.
-     * @see DiscordEventManager
-     * @since 0.0.1
-     * @return DiscordEventManager - the discord event manager.
-     */
-    public DiscordEventManager getDiscordEventManager(){
-        return this.discordEventManager;
     }
 
     /**

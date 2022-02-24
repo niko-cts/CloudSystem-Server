@@ -5,7 +5,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.fununity.cloud.common.events.Event;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
-import net.fununity.cloud.common.events.discord.DiscordEvent;
 import net.fununity.cloud.common.utils.DebugLoggerUtil;
 import net.fununity.cloud.common.utils.MessagingUtils;
 import net.fununity.cloud.server.CloudServer;
@@ -31,8 +30,6 @@ public class NettyHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
-        ClientHandler.getInstance().closeChannel(ctx);
-
         Event event = MessagingUtils.convertStreamToEvent(msg);
 
         if (event == null) {
@@ -42,8 +39,6 @@ public class NettyHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         if (receivedEvents.contains(event.getUniqueId())) {
             LOGGER.info(getPrefix(ctx) + "Already contains " + event);
-            ClientHandler.getInstance().receiverQueueEmptied(ctx);
-            ClientHandler.getInstance().openChannel(ctx);
             return;
         }
 
@@ -52,29 +47,13 @@ public class NettyHandler extends SimpleChannelInboundHandler<ByteBuf> {
             receivedEvents.remove(0);
 
         LOGGER.info(getPrefix(ctx) + "Received " + event);
+        ClientHandler.getInstance().setLastReceivedEvent(ctx, event);
 
-        if (event instanceof CloudEvent) {
+        if (event instanceof CloudEvent && event.getId() != CloudEvent.CLOUD_RESEND_REQUEST) {
             CloudEvent cloudEvent = (CloudEvent) event;
-
-            switch (cloudEvent.getId()) {
-                case CloudEvent.CLOUD_RESEND_REQUEST:
-                    ClientHandler.getInstance().resendLastEvent(ctx);
-                    return;
-                case CloudEvent.CLOUD_QUEUE_EMPTY:
-                    ClientHandler.getInstance().receiverQueueEmptied(ctx);
-                    break;
-                default:
-                    cloudEvent.addData(ctx);
-                    CloudServer.getInstance().getCloudEventManager().fireCloudEvent(cloudEvent);
-                    break;
-            }
-
-        } else if (event instanceof DiscordEvent) {
-            DiscordEvent discordEvent = (DiscordEvent) event;
-            CloudServer.getInstance().getDiscordEventManager().fireDiscordEvent(discordEvent);
+            cloudEvent.addData(ctx);
+            CloudServer.getInstance().getCloudEventManager().fireCloudEvent(cloudEvent);
         }
-
-        ClientHandler.getInstance().openChannel(ctx);
     }
 
     /**
@@ -85,10 +64,6 @@ public class NettyHandler extends SimpleChannelInboundHandler<ByteBuf> {
      */
     private String getPrefix(ChannelHandlerContext ctx) {
         return new StringBuilder().append("NettyHandler-").append(ClientHandler.getInstance().getClientId(ctx)).append(": ").toString();
-    }
-    @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        // not needed
     }
 
     @Override

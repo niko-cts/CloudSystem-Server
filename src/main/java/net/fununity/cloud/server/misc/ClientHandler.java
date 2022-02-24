@@ -40,7 +40,6 @@ public class ClientHandler {
 
     private final ServerHandler serverHandler;
     private final ConcurrentMap<String, ChannelHandlerContext> clients;
-    private ChannelHandlerContext discordContext;
     private final ConcurrentMap<ChannelHandlerContext, EventSendingManager> eventSenderMap;
 
     /**
@@ -57,7 +56,6 @@ public class ClientHandler {
 
         this.serverHandler = ServerHandler.getInstance();
         this.clients = new ConcurrentHashMap<>();
-        this.discordContext = null;
         this.eventSenderMap = new ConcurrentHashMap<>();
     }
 
@@ -91,8 +89,6 @@ public class ClientHandler {
      */
     public void saveClient(String clientId, ChannelHandlerContext ctx) {
         this.clients.putIfAbsent(clientId, ctx);
-        if (clientId.equalsIgnoreCase("CloudBot"))
-            this.discordContext = ctx;
         ctx.channel().closeFuture().addListener(channelFuture -> removeClient(ctx));
     }
 
@@ -103,8 +99,6 @@ public class ClientHandler {
      */
     public void removeClient(String clientId) {
         removeClient(getClientContext(clientId));
-        if (clientId.equalsIgnoreCase("CloudBot"))
-            this.discordContext = null;
     }
 
     /**
@@ -214,16 +208,6 @@ public class ClientHandler {
     }
 
     /**
-     * Opens channel.
-     * @param ctx ChannelHandlerContext - the channel
-     * @since 0.0.1
-     */
-    public void openChannel(ChannelHandlerContext ctx) {
-        if (this.eventSenderMap.containsKey(ctx))
-            this.eventSenderMap.get(ctx).openChannel();
-    }
-
-    /**
      * Get the client Id from the ctx
      * @param ctx ChannelHandlerContext - the channel
      * @return String - the id of the client
@@ -237,15 +221,6 @@ public class ClientHandler {
         return null;
     }
 
-    /**
-     * Gets the {@link io.netty.channel.ChannelHandlerContext} of the discord bot.
-     * Could be null if the bot is not registered.
-     * @return the ChannelHandlerContext of the bot.
-     * @since 0.0.1
-     */
-    public ChannelHandlerContext getDiscordContext() {
-        return this.discordContext;
-    }
 
     /**
      * Caches the new event sender for the given ctx
@@ -268,31 +243,14 @@ public class ClientHandler {
     }
 
     /**
-     * Calls {@link EventSendingManager#resendEvent()} of the given ctx
+     * Stores the client id in the {@link EventSendingManager}.
      * @param ctx ChannelHandlerContext - the channel
+     * @param event Event - last received event
      * @since 0.0.1
      */
-    public void resendLastEvent(ChannelHandlerContext ctx) {
+    public void setLastReceivedEvent(ChannelHandlerContext ctx, Event event) {
         if(this.eventSenderMap.containsKey(ctx))
-            eventSenderMap.get(ctx).resendEvent();
+            this.eventSenderMap.get(ctx).receivedEvent(event);
     }
 
-    /**
-     * Will call {@link EventSendingManager#needNoAnswer()}
-     * @param ctx ChannelHandlerContext - The channel.
-     * @since 0.0.1
-     */
-    public void receiverQueueEmptied(ChannelHandlerContext ctx) {
-        if(this.eventSenderMap.containsKey(ctx))
-            eventSenderMap.get(ctx).needNoAnswer();
-    }
-    /**
-     * Closes the channel
-     * @param ctx ChannelHandlerContext - The channel.
-     * @since 0.0.1
-     */
-    public void closeChannel(ChannelHandlerContext ctx) {
-        if(this.eventSenderMap.containsKey(ctx))
-            eventSenderMap.get(ctx).closeChannel();
-    }
 }
