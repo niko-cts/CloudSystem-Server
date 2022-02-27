@@ -5,6 +5,8 @@ import net.fununity.cloud.server.command.handler.Command;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class DebugCommand extends Command {
     /**
@@ -12,7 +14,7 @@ public class DebugCommand extends Command {
      * @since 0.0.1
      */
     public DebugCommand() {
-        super("debug", "debug", "Saves a debug text file with every console output and cloud packets.");
+        super("debug", "debug", "Saves a debug text file with every console output and cloud packets.", "log");
     }
 
     /**
@@ -23,7 +25,8 @@ public class DebugCommand extends Command {
     @Override
     public void execute(String[] args) {
         try {
-            DebugLoggerUtil.getInstance().saveToTextFile(Paths.get("./Servers/DebugOutput.txt"));
+            String date = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM-HH:mm"));
+            DebugLoggerUtil.getInstance().saveToTextFile(Paths.get("./Servers/DebugOutput " + date + ".txt"));
             log.info("Debug file was saved.");
         } catch (IOException e) {
             log.error(e.getMessage());

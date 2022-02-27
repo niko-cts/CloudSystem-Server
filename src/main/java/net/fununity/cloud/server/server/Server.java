@@ -317,7 +317,6 @@ public final class Server {
 
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverPath + " " + this.serverId + " " + this.serverMaxRam);
-            System.out.println(file.getPath() + " " + this.serverPath + " " + this.serverId);
             this.serverState = ServerState.RUNNING;
             LOG.info(INFO_SERVER_STARTED + this.serverId);
             DebugLoggerUtil.getInstance().info(INFO_SERVER_STARTED + this.serverId);
