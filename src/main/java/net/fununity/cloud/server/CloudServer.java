@@ -12,7 +12,6 @@ import net.fununity.cloud.server.command.CloudConsole;
 import net.fununity.cloud.server.listeners.cloud.CloudEvents;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsCache;
 import net.fununity.cloud.server.listeners.cloud.CloudEventsRequests;
-import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ConfigHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.netty.NettyHandler;
@@ -46,11 +45,11 @@ public class CloudServer implements Runnable{
         return LOG;
     }
 
-
-    private final CloudEventManager cloudEventManager = new CloudEventManager();
+    private final CloudEventManager cloudEventManager;
 
     private CloudServer(){
         INSTANCE = this;
+        cloudEventManager = new CloudEventManager();
     }
 
     public void run() {
@@ -97,14 +96,14 @@ public class CloudServer implements Runnable{
      */
     public void shutdownEverything() {
         ServerHandler.getInstance().shutdownAllServers();
-        ClientHandler.getInstance().sendDisconnect("DiscordBot");
-        /*CloudConsole.getInstance().shutDown();
+        CloudConsole.getInstance().shutDown();
+        System.exit(0);
+        /*
         try {
             Runtime.getRuntime().exec("screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill");
             Runtime.getRuntime().exec("exit");
         } catch (IOException e) {
             getLogger().warn(e.getMessage());
-        }
-        System.exit(0);*/
+        }*/
     }
 }

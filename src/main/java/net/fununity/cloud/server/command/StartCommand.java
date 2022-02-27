@@ -2,6 +2,7 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
+import net.fununity.cloud.server.misc.ConfigHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 
 public class StartCommand extends Command {
@@ -11,7 +12,7 @@ public class StartCommand extends Command {
      * @since 0.0.1
      */
     public StartCommand() {
-        super("start", "start <serverType> (<amount>)", "Starts a new server with specified type");
+        super("start", "start <serverType>/default (<amount>)", "Starts a new server with specified type");
     }
 
     /**
@@ -25,7 +26,7 @@ public class StartCommand extends Command {
             sendCommandUsage();
             return;
         }
-        if(ServerHandler.getInstance().getCurrentRamUsed() > ServerHandler.MAX_RAM) {
+        if (ServerHandler.getInstance().getCurrentRamUsed() > ServerHandler.MAX_RAM) {
             log.warn("The network has reached it's maximum amount of ram.");
             return;
         }
@@ -33,6 +34,11 @@ public class StartCommand extends Command {
         try {
             serverType = ServerType.valueOf(args[0]);
         } catch (IllegalArgumentException exception) {
+            if (args[0].equalsIgnoreCase("default")) {
+                log.info("Starting default servers...");
+                ConfigHandler.getInstance().loadDefaultServers();
+                return;
+            }
             sendIllegalServerType();
             return;
         }
