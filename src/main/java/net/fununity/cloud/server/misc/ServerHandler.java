@@ -398,8 +398,13 @@ public class ServerHandler {
      */
     public void shutdownAllServers() {
         ServerShutdown serverShutdown = new ServerShutdown(false) {};
-        for (Server server : getServers())
-            initShutdownProcess(server, serverShutdown);
+        for (Server server : getServers()) {
+            if (server.getServerType() != ServerType.BUNGEECORD)
+                initShutdownProcess(server, serverShutdown);
+        }
+        for (Server bungeecord : getServers()) {
+            initShutdownProcess(bungeecord, serverShutdown);
+        }
     }
 
     /**

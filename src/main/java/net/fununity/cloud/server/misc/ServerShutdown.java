@@ -15,15 +15,17 @@ public abstract class ServerShutdown {
     }
 
     /**
-     * Server was stopped.
+     * Will be called, if server completely stops.
      * @since 0.0.1
      */
-    public void serverStopped() {}
+    public void serverStopped() {
+        // this method can be overwritten.
+    }
 
     /**
      * A minigame check needs to happen in the stopping process.
      * @see MinigameHandler
-     * @return boolean - check if new minigame lobby should be instantiated.
+     * @return boolean - check if a new minigame lobby should be instantiated.
      * @since 0.0.1
      */
     public boolean needsMinigameCheck() {
