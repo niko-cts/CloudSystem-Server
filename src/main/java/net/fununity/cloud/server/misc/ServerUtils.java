@@ -149,4 +149,37 @@ public class ServerUtils {
         }
     }
 
+    /**
+     * Gets the max amount of players of a server type.
+     * @param serverType {@link ServerType} - the server type.
+     * @return int - the maximum amount of players on the server.
+     * @since 0.0.1
+     */
+    public static int getDefaultPortForServerType(ServerType serverType) {
+        switch(serverType) {
+            case BUNGEECORD:
+                return 25565;
+            case LOBBY:
+                return 25566;
+            case BEATINGPIRATES:
+                return 26000;
+            case PAINTTHESHEEP:
+                return 26500;
+            case CAVEHUNT:
+                return 27000;
+            case FLOWERWARS2x1:
+                return 27500;
+            case FLOWERWARS2x2:
+                return 27600;
+            case FLOWERWARS4x2:
+                return 27700;
+            case FREEBUILD:
+                return 28000;
+            case TTT:
+                return 28500;
+            default:
+                return 29000;
+        }
+    }
+
 }

@@ -72,8 +72,17 @@ public class ServerHandler {
      * @return List<Server> - the list of servers.
      * @since 0.0.1
      */
-    public List<Server> getServers() {
-        return this.servers;
+    protected List<Server> getServers() {
+        return new ArrayList<>(this.servers);
+    }
+
+    /**
+     * Removes a server from the list.
+     * @param server Server - the server to remove
+     * @since 1.0
+     */
+    public void removeServer(Server server) {
+        this.servers.remove(server);
     }
 
     /**
@@ -130,7 +139,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public Server getServerByIdentifier(String identifier) {
-        return servers.stream().filter(server -> server.getServerId().equals(identifier)).findFirst().orElse(null);
+        return getServers().stream().filter(server -> server.getServerId().equals(identifier)).findFirst().orElse(null);
     }
 
     /**
@@ -145,7 +154,7 @@ public class ServerHandler {
                 return server.getServerId();
         }
         StringBuilder builder = new StringBuilder();
-        for (Server server : this.servers) {
+        for (Server server : this.getServers()) {
             builder.append("[").append(server.getServerId()).append(":").append(server.getServerPort()).append("]").append(",");
         }
         LOG.warn("Port " + port + " was not found in the server list, but was requested! All Servers: " + builder);
@@ -158,31 +167,41 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public int getLobbyCount(){
-        return (int) this.servers.stream().filter(s-> s.getServerType() == ServerType.LOBBY).count();
+        return (int) this.getServers().stream().filter(s -> s.getServerType() == ServerType.LOBBY).count();
     }
 
 
-    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(30004, 30011, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 32002);
+    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(30004, 30011, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 32002, 32003);
+
+    /**
+     * Get the best free port for the given server type.
+     * @param serverType {@link ServerType} - the server type.
+     * @return int - the next free port.
+     * @since 1.0
+     */
+    public int getOptimalPort(ServerType serverType) {
+        return getNextFreeServerPort(ServerUtils.getDefaultPortForServerType(serverType));
+    }
 
     /**
      * Returns the next free not used port considering all known servers.
+     * @param startPort int - the port to start searching.
      * @since 0.0.1
      * @return int - the highest port.
      */
-    public int getNextFreeServerPort() {
-        int port = 0;
-        for (Server server : this.servers)
-            if (server.getServerPort() > port)
-                port = server.getServerPort();
-        for (Server server : this.startQueue) {
-            if (server.getServerPort() > port)
-                port = server.getServerPort();
+    private int getNextFreeServerPort(int startPort) {
+        int finalStartPort = startPort;
+        boolean portExits = getAllServers().stream().anyMatch(s -> s.getServerPort() == finalStartPort);
+        while (portExits) {
+            int p = startPort;
+            portExits = getAllServers().stream().anyMatch(s -> s.getServerPort() == p);
+            startPort++;
         }
-        port++;
-        while (BLACKLISTED_PORTS.contains(port))
-            port++;
-        return port;
+        while (BLACKLISTED_PORTS.contains(startPort))
+            startPort++;
+        return startPort;
     }
+
 
 
     /**
@@ -316,7 +335,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public List<Server> getServersByType(ServerType serverType) {
-        return this.servers.stream().filter(s -> s.getServerType() == serverType).collect(Collectors.toList());
+        return this.getServers().stream().filter(s -> s.getServerType() == serverType).collect(Collectors.toList());
     }
 
     /**
@@ -341,7 +360,7 @@ public class ServerHandler {
      */
     public ServerDefinition getServerDefinitionByPort(int port) {
         Server server = getServerByIdentifier(getServerIdentifierByPort(port));
-        if(server != null) {
+        if (server != null) {
             return new ServerDefinition(server.getServerId(), server.getServerIp(), server.getServerMaxRam(), server.getServerMotd(), server.getMaxPlayers(), server.getPlayerCount(), port, server.getServerType(), server.getServerState());
         }
         return null;
@@ -398,6 +417,8 @@ public class ServerHandler {
      */
     public void shutdownAllServers() {
         ServerShutdown serverShutdown = new ServerShutdown(false) {};
+        this.startQueue.clear();
+        this.restartQueue.clear();
         for (Server server : getServers()) {
             if (server.getServerType() != ServerType.BUNGEECORD)
                 initShutdownProcess(server, serverShutdown);
@@ -528,11 +549,11 @@ public class ServerHandler {
      */
     public void setPlayerCountFromServer(String serverID, int playerCount) {
         Server server = getServerByIdentifier(serverID);
-        if(server == null) {
+        if (server == null) {
             return;
         }
         server.setPlayerCount(playerCount);
-        if(server.getServerType() == ServerType.LOBBY)
+        if (server.getServerType() == ServerType.LOBBY)
             ClientHandler.getInstance().sendLobbyInformationToLobbies();
     }
 
@@ -566,7 +587,7 @@ public class ServerHandler {
      */
     public int getPlayerCountOfServer(String serverId) {
         Server server = getServerByIdentifier(serverId);
-        if(server == null) {
+        if (server == null) {
             return -1;
         }
         return server.getPlayerCount();
@@ -580,9 +601,8 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public int getPlayerCountOfServerType(ServerType serverType) {
-        List<Server> servers = getServers().stream().filter(type -> type.getServerType() == serverType).collect(Collectors.toList());
         int playerCount = 0;
-        for(Server server : servers) {
+        for(Server server : getServersByType(serverType)) {
             playerCount += server.getPlayerCount();
         }
         return playerCount;
@@ -621,6 +641,18 @@ public class ServerHandler {
         checkStartQueue(server);
     }
 
+    /**
+     * Get all servers running servers and queued.
+     * @return List<Server> - all servers.
+     * @since 1.0
+     */
+    private List<Server> getAllServers() {
+        List<Server> servers = getServers();
+        servers.addAll(getStartQueue());
+        servers.addAll(getStopQueue());
+        return servers;
+    }
+
     public Queue<Server> getStopQueue() {
         return new LinkedList<>(stopQueue);
     }
@@ -636,4 +668,5 @@ public class ServerHandler {
     public ClientHandler getClientHandler() {
         return clientHandler;
     }
+
 }

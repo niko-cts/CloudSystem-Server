@@ -30,7 +30,7 @@ public class CloudEvents implements CloudEventListener {
         switch (cloudEvent.getId()) {
             case CloudEvent.SERVER_CREATE:
                 Vector data = cloudEvent.getData();
-                serverHandler.addServer(new Server(data.get(0).toString(), data.get(1).toString(), Integer.parseInt(data.get(2).toString()), data.get(3).toString(), data.get(4).toString(), Integer.parseInt(data.get(5).toString()), (ServerType) data.get(6)));
+                serverHandler.addServer(new Server(data.get(0).toString(), data.get(1).toString(), data.get(3).toString(), data.get(4).toString(), Integer.parseInt(data.get(5).toString()), (ServerType) data.get(6)));
                 break;
             case CloudEvent.SERVER_CREATE_WITHOUT_PORT:
                 data = cloudEvent.getData();

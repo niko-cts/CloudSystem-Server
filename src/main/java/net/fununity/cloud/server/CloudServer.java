@@ -98,12 +98,5 @@ public class CloudServer implements Runnable{
         ServerHandler.getInstance().shutdownAllServers();
         CloudConsole.getInstance().shutDown();
         System.exit(0);
-        /*
-        try {
-            Runtime.getRuntime().exec("screen -ls | grep Detached | cut -d. -f1 | awk '{print $1}' | xargs kill");
-            Runtime.getRuntime().exec("exit");
-        } catch (IOException e) {
-            getLogger().warn(e.getMessage());
-        }*/
     }
 }

@@ -45,7 +45,7 @@ public class ServerDeleter extends TimerTask {
             DebugLoggerUtil.getInstance().warn("Error while deleting server: " + exception.getMessage());
         }
 
-        ServerHandler.getInstance().getServers().remove(server);
+        ServerHandler.getInstance().removeServer(server);
 
         if (ServerHandler.getInstance().getClientHandler().getClientContext(server.getServerId()) != null)
             ServerHandler.getInstance().getClientHandler().removeClient(server.getServerId());

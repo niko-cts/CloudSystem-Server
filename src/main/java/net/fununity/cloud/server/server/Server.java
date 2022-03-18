@@ -77,7 +77,6 @@ public final class Server {
      * @author Marco Hajek
      */
     public Server(String serverId, String serverIp, int serverPort, String maxRam, String motd, int maxPlayers, ServerType serverType) {
-
         this.serverId = serverId;
         this.serverIp = serverIp;
         this.serverPort = serverPort;
@@ -105,8 +104,8 @@ public final class Server {
      * @since 0.0.1
      * @author Marco Hajek
      */
-    public Server(String serverId, String serverIp, String maxRam, String motd, int maxPlayers, ServerType serverType){
-        this(serverId, serverIp, ServerHandler.getInstance().getNextFreeServerPort(), maxRam, motd, maxPlayers, serverType);
+    public Server(String serverId, String serverIp, String maxRam, String motd, int maxPlayers, ServerType serverType) {
+        this(serverId, serverIp, ServerHandler.getInstance().getOptimalPort(serverType), maxRam, motd, maxPlayers, serverType);
     }
 
     /**
