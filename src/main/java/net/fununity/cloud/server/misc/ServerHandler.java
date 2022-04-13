@@ -14,6 +14,9 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
+import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.ServerSocket;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -194,11 +197,35 @@ public class ServerHandler {
         boolean portExits = getAllServers().stream().anyMatch(s -> s.getServerPort() == finalStartPort);
         while (portExits) {
             int p = startPort;
-            portExits = getAllServers().stream().anyMatch(s -> s.getServerPort() == p);
+            portExits = getAllServers().stream().anyMatch(s -> s.getServerPort() == p) || BLACKLISTED_PORTS.contains(startPort);
+
+            if (!portExits) {
+                ServerSocket ss = null;
+                DatagramSocket ds = null;
+                try {
+                    ss = new ServerSocket(startPort);
+                    ss.setReuseAddress(true);
+                    ds = new DatagramSocket(startPort);
+                    ds.setReuseAddress(true);
+                    return startPort;
+                } catch (IOException ignored) {
+                } finally {
+                    if (ds != null) {
+                        ds.close();
+                    }
+
+                    if (ss != null) {
+                        try {
+                            ss.close();
+                        } catch (IOException e) {
+                            /* should not be thrown */
+                        }
+                    }
+                }
+            }
+
             startPort++;
         }
-        while (BLACKLISTED_PORTS.contains(startPort))
-            startPort++;
         return startPort;
     }
 
@@ -459,7 +486,7 @@ public class ServerHandler {
         CloudEvent event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(lobby.getServerId());
 
         int canBeMoved = lobby.getMaxPlayers() - lobby.getPlayerCount() - 1;
-        for (int i=0; i < sendingPlayers.size() && i < canBeMoved; i++)
+        for (int i = 0; i < sendingPlayers.size() && i < canBeMoved; i++)
             event.addData(sendingPlayers.poll());
 
         sendToBungeeCord(event);

@@ -137,7 +137,7 @@ public class ServerUtils {
      * @since 0.0.1
      */
     public static int getMaxPlayersOfServerType(ServerType serverType) {
-        switch(serverType) {
+        switch (serverType) {
             case BUNGEECORD:
                 return 120;
             case LANDSCAPES:

@@ -43,7 +43,7 @@ public class ConfigHandler {
      * @since 0.0.1
      */
     public static ConfigHandler getInstance(){
-        if(instance == null)
+        if (instance == null)
             instance = new ConfigHandler();
         return instance;
     }
@@ -57,9 +57,9 @@ public class ConfigHandler {
         logger.setLevel(Level.INFO);
         try {
             this.configFile = new File("config.xml");
-            if(!this.configFile.exists()) {
+            if (!this.configFile.exists()) {
                 boolean newFile = this.configFile.createNewFile();
-                if(newFile)
+                if (newFile)
                     this.loadDefaultConfiguration();
             }
             this.loadDefaultServers();
@@ -136,7 +136,6 @@ public class ConfigHandler {
         server.appendChild(elementRam);
         server.appendChild(elementMotd);
         server.appendChild(elementType);
-
         return server;
     }
 

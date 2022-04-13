@@ -38,14 +38,14 @@ public class ListCommand extends Command {
         log.info("Players on network: " + ServerHandler.getInstance().getPlayerCountOfNetwork());
         StringBuilder builder = new StringBuilder(serverDefinitions.size() + " servers active: ");
         for (ServerDefinition serverDefinition : serverDefinitions)
-            builder.append(serverDefinition.getServerId()).append("(").append(serverDefinition.getCurrentPlayers()).append("), ");
+            builder.append(getServerDetails(serverDefinition)).append(", ");
         log.info(builder.toString());
 
         if (!ServerHandler.getInstance().getStartQueue().isEmpty()) {
             builder = new StringBuilder();
             builder.append("In start queue: ");
             for (Server server : ServerHandler.getInstance().getStartQueue()) {
-                builder.append(server.getServerId()).append(", ");
+                builder.append(getServerDetails(server)).append(", ");
             }
             log.info(builder.toString());
         }
@@ -53,7 +53,7 @@ public class ListCommand extends Command {
             builder = new StringBuilder();
             builder.append("In stop queue: ");
             for (Server server : ServerHandler.getInstance().getStopQueue()) {
-                builder.append(server.getServerId()).append(", ");
+                builder.append(getServerDetails(server)).append(", ");
             }
             log.info(builder.toString());
         }
@@ -65,5 +65,14 @@ public class ListCommand extends Command {
             }
             log.info(builder.toString());
         }
+    }
+
+    private String getServerDetails(ServerDefinition serverDefinition) {
+        return new StringBuilder().append(serverDefinition.getServerId()).append("(P: ").append(serverDefinition.getCurrentPlayers()).append(", ")
+                .append(serverDefinition.getServerPort()).append(", Ram: ").append(serverDefinition.getServerMaxRam()).append(")").toString();
+    }
+    private String getServerDetails(Server server) {
+        return new StringBuilder().append(server.getServerId()).append("(P: ").append(server.getPlayerCount()).append(", ")
+                .append(server.getServerPort()).append(", Ram: ").append(server.getServerMaxRam()).append(")").toString();
     }
 }
