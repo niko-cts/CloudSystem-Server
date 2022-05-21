@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class ServerHandler {
 
     public static final Logger LOG = Logger.getLogger(ServerHandler.class.getName());
-    public static final int MAX_RAM = 42200;
+    public static final int MAX_RAM = 35200;
     private static ServerHandler instance;
 
     private final ClientHandler clientHandler;
@@ -246,28 +246,6 @@ public class ServerHandler {
 
 
     /**
-     * Shuts the server with the given server id down.
-     * @param server Server - The server.
-     * @since 0.0.1
-     */
-    public void initShutdownProcess(Server server) {
-        initShutdownProcess(server, new ServerShutdown(true) {});
-    }
-
-    /**
-     * Shuts the server with the given server id down.
-     * @param server Server - The server.
-     * @param shutdown {@link ServerShutdown} - Interface which will be executed, when remove confirmation was sent.
-     * @since 0.0.1
-     */
-    public void initShutdownProcess(Server server, ServerShutdown shutdown) {
-        if (server != null && server.getShutdownProcess() == null) {
-            server.setShutdownProcess(shutdown);
-            sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
-        }
-    }
-
-    /**
      * Bungee send the shutdown confirmation.
      * Server will be stopped.
      * @param server Server - the server that will be stopped
@@ -294,6 +272,30 @@ public class ServerHandler {
     }
 
     /**
+     * Shuts the server with the given server id down.
+     * @param server Server - The server.
+     * @since 0.0.1
+     */
+    public void initShutdownProcess(Server server) {
+        initShutdownProcess(server, new ServerShutdown(true) {});
+    }
+
+    /**
+     * Shuts the server with the given server id down.
+     * @param server Server - The server.
+     * @param shutdown {@link ServerShutdown} - Abstract class which will be called, when remove confirmation was sent.
+     * @since 0.0.1
+     */
+    public void initShutdownProcess(Server server, ServerShutdown shutdown) {
+        if (server != null && server.getShutdownProcess() == null) {
+            server.setShutdownProcess(shutdown);
+            sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_REMOVE_SERVER).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
+            if (getBungeeServers().isEmpty())
+                checkStopQueue(server);
+        }
+    }
+
+    /**
      * Calls {@link ClientHandler#sendDisconnect(String)} and {@link Server#stop()} to finally stop the server.
      * @param server Server - the server to stop.
      * @since 0.0.1
@@ -310,7 +312,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void restartServer(Server server) {
-        initShutdownProcess(server, new ServerShutdown(false) {
+        initShutdownProcess(server, new ServerShutdown() {
                     @Override
                     public void serverStopped() {
                         if (!restartQueue.containsKey(server.getServerType())) {
@@ -431,7 +433,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServersOfType(ServerType type) {
-        ServerShutdown serverShutdown = new ServerShutdown(false) {};
+        ServerShutdown serverShutdown = new ServerShutdown() {};
         for (Server server : getServersByType(type)) {
             initShutdownProcess(server, serverShutdown);
         }
@@ -443,15 +445,18 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void shutdownAllServers() {
-        ServerShutdown serverShutdown = new ServerShutdown(false) {};
+        ServerShutdown serverShutdown = new ServerShutdown() {
+            @Override
+            public void serverStopped() {
+                if (getServers().size() == getBungeeServers().size())
+                    shutdownAllServersOfType(ServerType.BUNGEECORD);
+            }
+        };
         this.startQueue.clear();
         this.restartQueue.clear();
         for (Server server : getServers()) {
             if (server.getServerType() != ServerType.BUNGEECORD)
                 initShutdownProcess(server, serverShutdown);
-        }
-        for (Server bungeecord : getServers()) {
-            initShutdownProcess(bungeecord, serverShutdown);
         }
     }
 

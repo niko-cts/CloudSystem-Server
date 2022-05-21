@@ -27,7 +27,7 @@ public class MinigameHandler {
      * @return MinigameHandler - Instance of {@link MinigameHandler}
      */
     public static MinigameHandler getInstance() {
-        if(instance == null)
+        if (instance == null)
             instance = new MinigameHandler();
         return instance;
     }
@@ -59,7 +59,10 @@ public class MinigameHandler {
         Set<Server> servers = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
         if (servers.contains(server)) {
             servers.remove(server);
-            minigameLobbies.put(server.getServerType(), servers);
+            if (servers.isEmpty())
+                minigameLobbies.remove(server.getServerType());
+            else
+                minigameLobbies.put(server.getServerType(), servers);
             CloudServer.getLogger().info("Removing minigame lobby: " + server.getServerId());
             if (check) {
                 checkToAdd(servers.size(), server.getServerType());
@@ -76,7 +79,7 @@ public class MinigameHandler {
         Set<Server> lobbies = minigameLobbies.getOrDefault(server.getServerType(), new HashSet<>());
         if (!lobbies.contains(server)) {
             lobbies.add(server);
-            if(startingServer > 0)
+            if (startingServer > 0)
                 startingServer--;
             minigameLobbies.put(server.getServerType(), lobbies);
         }

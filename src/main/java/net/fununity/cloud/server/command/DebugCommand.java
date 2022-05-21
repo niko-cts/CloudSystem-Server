@@ -26,7 +26,7 @@ public class DebugCommand extends Command {
     public void execute(String[] args) {
         try {
             String date = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM-HH:mm"));
-            DebugLoggerUtil.getInstance().saveToTextFile(Paths.get("./Servers/DebugOutput " + date + ".txt"));
+            DebugLoggerUtil.getInstance().saveToTextFile(Paths.get("./Servers/DebugOutput/CLOUD/" + date + ".txt"));
             log.info("Debug file was saved.");
         } catch (IOException e) {
             log.error(e.getMessage());

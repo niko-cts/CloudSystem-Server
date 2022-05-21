@@ -10,6 +10,10 @@ public abstract class ServerShutdown {
 
     private final boolean needsMinigameCheck;
 
+    public ServerShutdown() {
+        this(false);
+    }
+
     public ServerShutdown(boolean needsMinigameCheck) {
         this.needsMinigameCheck = needsMinigameCheck;
     }

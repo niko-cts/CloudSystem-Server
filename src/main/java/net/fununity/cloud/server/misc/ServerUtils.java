@@ -29,9 +29,6 @@ public class ServerUtils {
             case LOBBY:
                 path.append("Lobby/");
                 break;
-            case MINIGAME:
-                path.append("MiniGame/");
-                break;
             case CAVEHUNT:
                 path.append("CaveHunt/");
                 break;
@@ -79,7 +76,7 @@ public class ServerUtils {
     public static String getServerIdOfServerType(ServerType serverType) {
         switch(serverType) {
             case BUNGEECORD:
-                return "BungeeCord";
+                return "Main";
             case LOBBY:
                 return "Lobby";
             case CAVEHUNT:

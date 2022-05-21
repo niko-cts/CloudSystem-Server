@@ -16,7 +16,7 @@ import java.util.List;
 public class NettyHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
     private static final DebugLoggerUtil LOGGER = DebugLoggerUtil.getInstance();
-    private static final int MAX_CACHED_EVENTS = 200;
+    private static final int MAX_CACHED_EVENTS = 50;
     private final List<String> receivedEvents;
 
     public NettyHandler() {
