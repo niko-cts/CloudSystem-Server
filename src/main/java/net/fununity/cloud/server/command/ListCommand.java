@@ -1,11 +1,11 @@
 package net.fununity.cloud.server.command;
 
-import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
 
+import java.util.Comparator;
 import java.util.List;
 
 public class ListCommand extends Command {
@@ -25,54 +25,46 @@ public class ListCommand extends Command {
      */
     @Override
     public void execute(String[] args) {
-        List<ServerDefinition> serverDefinitions = ServerHandler.getInstance().generateServerDefinitions();
+        List<Server> servers = ServerHandler.getInstance().getServers();
         if (args.length == 1) {
             try {
                 ServerType serverType = ServerType.valueOf(args[0]);
-                serverDefinitions.removeIf(d -> d.getServerType() != serverType);
+                servers.removeIf(d -> d.getServerType() != serverType);
             } catch (IllegalArgumentException exception) {
                 sendIllegalServerType();
                 return;
             }
-        }
+        } else
+            servers.sort(Comparator.comparingInt(value -> value.getServerType().ordinal()));
+
         log.info("Players on network: " + ServerHandler.getInstance().getPlayerCountOfNetwork());
-        StringBuilder builder = new StringBuilder(serverDefinitions.size() + " servers active: ");
-        for (ServerDefinition serverDefinition : serverDefinitions)
-            builder.append(getServerDetails(serverDefinition)).append(", ");
+        log.info(servers.size() + " server active:");
+        StringBuilder builder = new StringBuilder();
+        for (Server server : servers)
+            builder.append(getServerDetails(server)).append(", ");
         log.info(builder.toString());
 
         if (!ServerHandler.getInstance().getStartQueue().isEmpty()) {
             builder = new StringBuilder();
             builder.append("In start queue: ");
             for (Server server : ServerHandler.getInstance().getStartQueue()) {
-                builder.append(getServerDetails(server)).append(", ");
+                builder.append(server.getServerId()).append(", ");
             }
             log.info(builder.toString());
         }
-        if (!ServerHandler.getInstance().getStopQueue().isEmpty()) {
+        if (!ServerHandler.getInstance().getServerDeleteQueue().isEmpty()) {
             builder = new StringBuilder();
             builder.append("In stop queue: ");
-            for (Server server : ServerHandler.getInstance().getStopQueue()) {
-                builder.append(getServerDetails(server)).append(", ");
-            }
-            log.info(builder.toString());
-        }
-        if (!ServerHandler.getInstance().getRestartQueue().isEmpty()) {
-            builder = new StringBuilder();
-            builder.append("In restart queue: ");
-            for (ServerType server : ServerHandler.getInstance().getRestartQueue()) {
-                builder.append(server).append(", ");
+            for (Server server : ServerHandler.getInstance().getServerDeleteQueue()) {
+                builder.append(server.getServerId()).append(", ");
             }
             log.info(builder.toString());
         }
     }
 
-    private String getServerDetails(ServerDefinition serverDefinition) {
-        return new StringBuilder().append(serverDefinition.getServerId()).append("(P: ").append(serverDefinition.getCurrentPlayers()).append(", ")
-                .append(serverDefinition.getServerPort()).append(", Ram: ").append(serverDefinition.getServerMaxRam()).append(")").toString();
-    }
     private String getServerDetails(Server server) {
-        return new StringBuilder().append(server.getServerId()).append("(P: ").append(server.getPlayerCount()).append(", ")
-                .append(server.getServerPort()).append(", Ram: ").append(server.getServerMaxRam()).append(")").toString();
+        return new StringBuilder().append(server.getServerId())
+                .append(" [").append(server.getServerIp()).append(":").append(server.getServerPort()).append(" w. ")
+                .append(server.getPlayerCount()).append(", max-ram: ").append(server.getServerMaxRam()).append("]").toString();
     }
 }

@@ -26,11 +26,13 @@ public class ServerDeleter extends TimerTask {
      */
     public ServerDeleter(Server server) {
         this.server = server;
+        this.server.stopAliveChecker();
         new Timer().schedule(this, 200);
     }
 
     /**
-     * The action to be performed by this timer task.
+     * Will remove the server from all lists
+     * Calls {@link ServerHandler#continueStopQueue(Server)}.
      */
     @Override
     public void run() {
@@ -60,6 +62,6 @@ public class ServerDeleter extends TimerTask {
 
         DebugLoggerUtil.getInstance().info(server.getServerId() + " fully stopped.");
 
-        ServerHandler.getInstance().checkStopQueue(server);
+        ServerHandler.getInstance().continueStopQueue(server);
     }
 }

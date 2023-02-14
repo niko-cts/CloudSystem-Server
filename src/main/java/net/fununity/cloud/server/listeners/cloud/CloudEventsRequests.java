@@ -53,7 +53,7 @@ public class CloudEventsRequests implements CloudEventListener {
                     ClientHandler.getInstance().sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
                 } else {
                     String serverId = cloudEvent.getData().get(0).toString();
-                    serverHandler.initShutdownProcess(serverHandler.getServerByIdentifier(serverId));
+                    serverHandler.shutdownServer(serverHandler.getServerByIdentifier(serverId));
                 }
                 break;
             case CloudEvent.REQ_SERVER_RESTART:

@@ -43,7 +43,7 @@ public class StopCommand extends Command {
             }
 
             log.info("Shutting down " + server.getServerId());
-            ServerHandler.getInstance().initShutdownProcess(server);
+            ServerHandler.getInstance().shutdownServer(server);
         }
     }
 }

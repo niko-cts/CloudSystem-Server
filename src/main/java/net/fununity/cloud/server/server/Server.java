@@ -63,6 +63,7 @@ public final class Server {
     private int maxPlayers;
     private int playerCount;
     private ServerShutdown shutdownProcess;
+    private ServerAliveChecker aliveChecker;
 
     /**
      * Creates a new server instance.
@@ -211,7 +212,7 @@ public final class Server {
         if (serverType == ServerType.LOBBY && playerCount == 0 && !serverId.equals("Lobby01") && !serverId.equals("Lobby02") &&
                     ServerHandler.getInstance().getPlayerCountOfNetwork() + getMaxPlayers() < ServerHandler.getInstance().getLobbyServers().stream()
                             .mapToInt(Server::getMaxPlayers).sum()) {
-                ServerHandler.getInstance().initShutdownProcess(this);
+                ServerHandler.getInstance().shutdownServer(this);
         }
     }
 
@@ -317,9 +318,12 @@ public final class Server {
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverPath + " " + this.serverId + " " + this.serverMaxRam);
             this.serverState = ServerState.RUNNING;
+
+            if (serverType != ServerType.BUNGEECORD)
+                this.aliveChecker = new ServerAliveChecker(this);
+
             LOG.info(INFO_SERVER_STARTED + this.serverId);
             DebugLoggerUtil.getInstance().info(INFO_SERVER_STARTED + this.serverId);
-
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
             DebugLoggerUtil.getInstance().warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
@@ -346,6 +350,7 @@ public final class Server {
             ServerHandler.getInstance().flushServer(this);
             return;
         }
+
         this.serverState = ServerState.STOPPED;
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
@@ -416,12 +421,20 @@ public final class Server {
 
     /**
      * Sets remove confirmation to true.
-     * Remove confirmation needs to be send from bungee, so the server can finally be stopped.
+     * Remove confirmation needs to be sent from bungee, so the server can finally be stopped.
      * @param shutdownProcess {@link ServerShutdown} - the process instance.
      * @since 0.0.1
      */
     public void setShutdownProcess(ServerShutdown shutdownProcess) {
         this.shutdownProcess = shutdownProcess;
+    }
+
+    public void stopAliveChecker() {
+        this.aliveChecker.stopTimer();
+    }
+
+    public void receivedClientAliveResponse() {
+        this.aliveChecker.receivedEvent();
     }
 
     @Override

@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.events.Event;
 import net.fununity.cloud.common.events.EventSendingManager;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
+import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.server.Server;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
@@ -185,6 +186,14 @@ public class ClientHandler {
         }
     }
 
+    /**
+     * Sends an event to the server.
+     * @param server Server - server to send event.
+     * @param event Event - the event
+     */
+    public void sendEvent(Server server, Event event) {
+        sendEvent(getClientContext(server.getServerId()), event);
+    }
 
     /**
      * Sends an event to the specified CTX
@@ -193,6 +202,10 @@ public class ClientHandler {
      * @since 0.0.1
      */
     public void sendEvent(ChannelHandlerContext ctx, Event event) {
+        if (ctx == null) {
+            CloudServer.getLogger().warn("Tried to send an event while ChannelHandler is null.");
+            return;
+        }
         if (this.eventSenderMap.containsKey(ctx))
             this.eventSenderMap.get(ctx).sendEvent(event.clone());
     }

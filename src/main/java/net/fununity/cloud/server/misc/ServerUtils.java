@@ -62,48 +62,12 @@ public class ServerUtils {
             case TTT:
                 path.append("TTT/");
                 break;
+            case SKYDILATE:
+                path.append("SkyDilate/");
+                break;
             default:
         }
         return path.toString();
-    }
-
-    /**
-     * Get the server id of the type.
-     * @param serverType {@link ServerType} - the server type.
-     * @return String - the server id.
-     * @since 0.0.1
-     */
-    public static String getServerIdOfServerType(ServerType serverType) {
-        switch(serverType) {
-            case BUNGEECORD:
-                return "Main";
-            case LOBBY:
-                return "Lobby";
-            case CAVEHUNT:
-                return "CH";
-            case FLOWERWARS2x1:
-                return "FWTxO";
-            case FLOWERWARS2x2:
-                return "FWTxT";
-            case FLOWERWARS4x2:
-                return "FWFxT";
-            case BEATINGPIRATES:
-                return "BP";
-            case PAINTTHESHEEP:
-                return "PTS";
-            case LANDSCAPES:
-                return "LandScapes";
-            case FREEBUILD:
-                return "FreeBuild";
-            case COCBASE:
-                return "CoCBase";
-            case COCATTACK:
-                return "CoCAttack";
-            case TTT:
-                return "TTT";
-            default:
-                return "";
-        }
     }
 
     /**
@@ -161,21 +125,23 @@ public class ServerUtils {
             case BEATINGPIRATES:
                 return 26000;
             case PAINTTHESHEEP:
-                return 26500;
+                return 26250;
             case CAVEHUNT:
-                return 27000;
+                return 26500;
             case FLOWERWARS2x1:
-                return 27500;
+                return 26750;
             case FLOWERWARS2x2:
-                return 27600;
+                return 27000;
             case FLOWERWARS4x2:
-                return 27700;
+                return 27250;
             case FREEBUILD:
-                return 28000;
+                return 27500;
             case TTT:
-                return 28500;
+                return 27750;
+            case SKYDILATE:
+                return 28000;
             default:
-                return 29000;
+                return 28250;
         }
     }
 

@@ -58,7 +58,7 @@ public class NettyHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
     /**
      * Gets the prefix for debug info.
-     * @param ctx ChannelHandlerContext - the channel the event was send.
+     * @param ctx ChannelHandlerContext - the channel the event was sent.
      * @return String - the prefix.
      * @since 0.0.1
      */
