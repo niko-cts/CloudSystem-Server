@@ -351,12 +351,13 @@ public final class Server {
             return;
         }
 
-        this.serverState = ServerState.STOPPED;
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
+            this.serverState = ServerState.STOPPED;
+            new ServerDeleter(this);
+
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
             DebugLoggerUtil.getInstance().info(INFO_SERVER_STOPPED + this.serverId);
-            new ServerDeleter(this);
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
             ServerHandler.getInstance().flushServer(this);

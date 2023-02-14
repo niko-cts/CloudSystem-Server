@@ -49,8 +49,8 @@ public class CloudEventsRequests implements CloudEventListener {
             case CloudEvent.REQ_SERVER_SHUTDOWN:
                 if (cloudEvent.getData().size() == 1) {
                     ctx = (ChannelHandlerContext) cloudEvent.getData().get(0);
-                    clientHandler.removeClient(ctx);
                     ClientHandler.getInstance().sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
+                    clientHandler.removeClient(ctx);
                 } else {
                     String serverId = cloudEvent.getData().get(0).toString();
                     serverHandler.shutdownServer(serverHandler.getServerByIdentifier(serverId));

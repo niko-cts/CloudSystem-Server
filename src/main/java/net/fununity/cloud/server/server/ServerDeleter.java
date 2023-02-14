@@ -2,6 +2,8 @@ package net.fununity.cloud.server.server;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.common.utils.DebugLoggerUtil;
+import net.fununity.cloud.server.CloudServer;
+import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 
@@ -49,16 +51,22 @@ public class ServerDeleter extends TimerTask {
 
         ServerHandler.getInstance().removeServer(server);
 
-        if (ServerHandler.getInstance().getClientHandler().getClientContext(server.getServerId()) != null)
-            ServerHandler.getInstance().getClientHandler().removeClient(server.getServerId());
+        if (ClientHandler.getInstance().getClientContext(server.getServerId()) != null)
+            ClientHandler.getInstance().removeClient(server.getServerId());
 
         if (serverType == ServerType.LOBBY)
-            ServerHandler.getInstance().getClientHandler().sendLobbyInformationToLobbies();
+            ClientHandler.getInstance().sendLobbyInformationToLobbies();
         else
             MinigameHandler.getInstance().removeServer(server, server.getShutdownProcess() != null && server.getShutdownProcess().needsMinigameCheck());
 
-        if (server.getShutdownProcess() != null)
-            server.getShutdownProcess().serverStopped();
+
+        if (server.getShutdownProcess() != null) {
+            try {
+                server.getShutdownProcess().serverStopped();
+            } catch (Exception exception) {
+                CloudServer.getLogger().warn(exception.getMessage());
+            }
+        }
 
         DebugLoggerUtil.getInstance().info(server.getServerId() + " fully stopped.");
 

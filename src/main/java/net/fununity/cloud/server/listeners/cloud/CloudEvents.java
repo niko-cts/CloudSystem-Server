@@ -69,7 +69,7 @@ public class CloudEvents implements CloudEventListener {
                 if (server != null)
                     serverHandler.stopServerFinally(server);
                 break;
-            case CloudEvent.BUNGEE_REMOVED_SERVER:
+            case CloudEvent.BUNGEE_SERVER_REMOVED_RESPONSE:
                 ctx = clientHandler.getClientContext(cloudEvent.getData().get(0).toString());
                 if (ctx != null)
                     clientHandler.sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_SHUTDOWN_REQUEST));
