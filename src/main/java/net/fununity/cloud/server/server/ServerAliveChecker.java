@@ -11,14 +11,17 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
+ *
+ * <b>DISABLED</b> - Enable in {@link Server}
+ * <p>
  * This class checks if the server instance is still alive.
- * If the server does not respond for a long period, the server will be removed.
+ * If the server does not respond for a long period, the server will be removed.</p>
  * @see Server
  * @author Niko
  */
 public class ServerAliveChecker extends TimerTask {
 
-    private static final int PERIOD_TIME = 2500;
+    private static final int PERIOD_TIME = 120000;
 
     private final Server server;
     private final Timer timer;

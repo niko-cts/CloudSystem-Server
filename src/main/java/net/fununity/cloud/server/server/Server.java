@@ -319,8 +319,7 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverPath + " " + this.serverId + " " + this.serverMaxRam);
             this.serverState = ServerState.RUNNING;
 
-            if (serverType != ServerType.BUNGEECORD)
-                this.aliveChecker = new ServerAliveChecker(this);
+            if (serverType != ServerType.BUNGEECORD) this.aliveChecker = new ServerAliveChecker(this);
 
             LOG.info(INFO_SERVER_STARTED + this.serverId);
             DebugLoggerUtil.getInstance().info(INFO_SERVER_STARTED + this.serverId);
@@ -431,11 +430,13 @@ public final class Server {
     }
 
     public void stopAliveChecker() {
-        this.aliveChecker.stopTimer();
+        if (this.aliveChecker != null)
+            this.aliveChecker.stopTimer();
     }
 
     public void receivedClientAliveResponse() {
-        this.aliveChecker.receivedEvent();
+        if (this.aliveChecker != null)
+            this.aliveChecker.receivedEvent();
     }
 
     @Override
