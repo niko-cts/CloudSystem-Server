@@ -209,7 +209,7 @@ public final class Server {
      */
     public void setPlayerCount(int playerCount) {
         this.playerCount = playerCount;
-        if (serverType == ServerType.LOBBY && playerCount == 0 && !serverId.equals("Lobby01") && !serverId.equals("Lobby02") &&
+        if (serverType == ServerType.LOBBY && playerCount == 0 && !serverId.equals("Lobby01") &&
                     ServerHandler.getInstance().getPlayerCountOfNetwork() + getMaxPlayers() < ServerHandler.getInstance().getLobbyServers().stream()
                             .mapToInt(Server::getMaxPlayers).sum()) {
                 ServerHandler.getInstance().shutdownServer(this);

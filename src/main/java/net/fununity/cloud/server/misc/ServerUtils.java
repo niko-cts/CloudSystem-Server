@@ -62,8 +62,8 @@ public class ServerUtils {
             case TTT:
                 path.append("TTT/");
                 break;
-            case SKYDILATE:
-                path.append("SkyDilate/");
+            case SKYDILATION:
+                path.append("SkyDilation/");
                 break;
             default:
         }
@@ -138,7 +138,7 @@ public class ServerUtils {
                 return 27500;
             case TTT:
                 return 27750;
-            case SKYDILATE:
+            case SKYDILATION:
                 return 28000;
             default:
                 return 28250;

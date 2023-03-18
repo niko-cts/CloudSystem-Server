@@ -282,16 +282,6 @@ public class ServerHandler {
     }
 
     /**
-     * Calls {@link ClientHandler#sendDisconnect(String)} and {@link Server#stop()} to finally stop the server.
-     * @param server Server - the server to stop.
-     * @since 0.0.1
-     */
-    public void stopServerFinally(Server server) {
-        this.clientHandler.sendDisconnect(server.getServerId());
-        server.stop(); // will create ServerDeleter and removes server from list
-    }
-
-    /**
      * Removes the server from the queue and calls {@link ServerHandler#stopServerFinally(Server)} if queue is not empty.
      * This ensures, that the server was deleted completely.
      * @param server Server - server to remove from queue.
@@ -302,6 +292,16 @@ public class ServerHandler {
             if (!this.serverDeleteQueue.isEmpty())
                 stopServerFinally(this.serverDeleteQueue.peek());
         }
+    }
+
+    /**
+     * Calls {@link ClientHandler#sendDisconnect(String)} and {@link Server#stop()} to finally stop the server.
+     * @param server Server - the server to stop.
+     * @since 0.0.1
+     */
+    public void stopServerFinally(Server server) {
+        this.clientHandler.sendDisconnect(server.getServerId());
+        server.stop(); // will create ServerDeleter and removes server from list
     }
 
 
@@ -390,8 +390,7 @@ public class ServerHandler {
         else
             serverId += nextNumber;
 
-        int maxPlayers = ServerUtils.getMaxPlayersOfServerType(serverType);
-        addServer(new Server(serverId, "127.0.0.1", ServerUtils.getRamFromType(serverType) + "M", serverId, maxPlayers, serverType));
+        addServer(new Server(serverId, "127.0.0.1", ServerUtils.getRamFromType(serverType) + "M", serverId, ServerUtils.getMaxPlayersOfServerType(serverType), serverType));
     }
 
 
@@ -582,7 +581,7 @@ public class ServerHandler {
      */
     public void setPlayerCountOfNetwork(int count) {
         this.networkCount = count;
-        if (this.networkCount + 10 > getLobbyServers().stream().mapToInt(Server::getMaxPlayers).sum()) {
+        if (this.networkCount > getLobbyServers().stream().mapToInt(Server::getMaxPlayers).sum()) {
             createServerByServerType(ServerType.LOBBY);
         }
     }

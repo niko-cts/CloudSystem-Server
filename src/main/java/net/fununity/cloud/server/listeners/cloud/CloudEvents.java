@@ -36,6 +36,9 @@ public class CloudEvents implements CloudEventListener {
                 data = cloudEvent.getData();
                 serverHandler.addServer(new Server(data.get(0).toString(), data.get(1).toString(), data.get(2).toString(), data.get(3).toString(), Integer.parseInt(data.get(4).toString()), (ServerType) data.get(5)));
                 break;
+            case CloudEvent.SERVER_CREATE_BY_TYPE:
+                serverHandler.createServerByServerType((ServerType) cloudEvent.getData().get(0));
+                break;
             case CloudEvent.CLIENT_REGISTER:
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
                 clientHandler.saveClient(cloudEvent.getData().get(0).toString(), ctx);
@@ -103,27 +106,32 @@ public class CloudEvents implements CloudEventListener {
                 if (ctx != null)
                     clientHandler.sendEvent(ctx, (CloudEvent) cloudEvent.getData().get(1));
                 break;
-            case CloudEvent.FORWARD_TO_LOBBIES:
-                CloudEvent toForward = (CloudEvent) cloudEvent.getData().get(0);
-                if (toForward.getId() == CloudEvent.REQ_FOLLOW_ME) {
-                    toForward = new CloudEvent(CloudEvent.RES_FOLLOW_ME);
-                    for (int i = 0; i < ((CloudEvent) cloudEvent.getData().get(0)).getData().size(); i++)
-                        toForward.addData(((CloudEvent) cloudEvent.getData().get(0)).getData().get(i));
-                }
-                List<Server> lobbyServers = serverHandler.getLobbyServers();
+            case CloudEvent.FORWARD_TO_SERVERTYPE:
+                ServerType serverType = (ServerType) cloudEvent.getData().get(0);
+                List<Server> serversByType = serverHandler.getServersByType(serverType);
 
-                if (toForward.getId() == CloudEvent.STATUS_MINIGAME) {
-                    MinigameHandler.getInstance().receivedStatusUpdate(toForward);
-                    if (toForward.getData().size() == 7) {
-                        CloudEvent finalToForward = toForward;
-                        lobbyServers.removeIf(s -> !s.getServerId().equals(finalToForward.getData().get(6).toString()));
+                if (serversByType.isEmpty())
+                    break;
+
+                CloudEvent forwardingEvent = (CloudEvent) cloudEvent.getData().get(1);
+
+                if (forwardingEvent.getId() == CloudEvent.REQ_FOLLOW_ME) {
+                    forwardingEvent = new CloudEvent(CloudEvent.RES_FOLLOW_ME);
+                    for (int i = 0; i < ((CloudEvent) cloudEvent.getData().get(1)).getData().size(); i++)
+                        forwardingEvent.addData(((CloudEvent) cloudEvent.getData().get(1)).getData().get(i));
+                } else
+                if (forwardingEvent.getId() == CloudEvent.STATUS_MINIGAME) {
+                    MinigameHandler.getInstance().receivedStatusUpdate(forwardingEvent);
+                    if (forwardingEvent.getData().size() == 7) {
+                        CloudEvent finalToForward = forwardingEvent;
+                        serversByType.removeIf(s -> !s.getServerId().equals(finalToForward.getData().get(6).toString()));
                     }
                 }
 
-                for (Server s : lobbyServers) {
+                for (Server s : serversByType) {
                     ChannelHandlerContext lobbyContext = clientHandler.getClientContext(s.getServerId());
                     if (lobbyContext != null)
-                        clientHandler.sendEvent(lobbyContext, toForward);
+                        clientHandler.sendEvent(lobbyContext, forwardingEvent);
                 }
                 break;
         }
