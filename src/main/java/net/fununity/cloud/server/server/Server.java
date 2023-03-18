@@ -24,7 +24,7 @@ import java.util.Objects;
 /**
  * Abstract class to define the basic server instance.
  * @since 0.0.1
- * @author Marco Hajek
+ * @author Marco Hajek, Niko
  */
 public final class Server {
 
@@ -43,7 +43,7 @@ public final class Server {
     private static final String FILE_STOP = "stop.sh";
     private static final String FILE_SERVER_PROPERTIES = "server.properties";
 
-    protected static final Logger LOG = Logger.getLogger(Server.class);
+    static final Logger LOG = Logger.getLogger(Server.class);
 
     static {
         LOG.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
@@ -56,7 +56,7 @@ public final class Server {
     private final int serverPort;
     private final ServerType serverType;
     private ServerState serverState;
-    protected String serverPath;
+    String serverPath;
     private String backupPath;
     private final String serverMaxRam;
     private final String serverMotd;
@@ -94,19 +94,16 @@ public final class Server {
     }
 
     /**
-     * Creates a server with a "random" port.
-     * "random": current highest port + 1. Lol nice random :3
+     * Creates a server with the optimal port, ram and motd.
      * @param serverId String - the identifier of the server.
      * @param serverIp String - the ip of the server.
-     * @param maxRam String - the Xmx java string.
-     * @param motd String - the motd of the server.
      * @param serverType ServerType - the type of the server.
      * @see ServerType
      * @since 0.0.1
-     * @author Marco Hajek
+     * @author Niko
      */
-    public Server(String serverId, String serverIp, String maxRam, String motd, int maxPlayers, ServerType serverType) {
-        this(serverId, serverIp, ServerHandler.getInstance().getOptimalPort(serverType), maxRam, motd, maxPlayers, serverType);
+    public Server(String serverId, String serverIp, ServerType serverType) {
+        this (serverId, serverIp, ServerHandler.getInstance().getOptimalPort(serverType), ServerUtils.getRamFromType(serverType) + "M", serverId, ServerUtils.getMaxPlayersOfServerType(serverType), serverType);
     }
 
     /**

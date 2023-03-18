@@ -103,8 +103,9 @@ public class ServerUtils {
                 return 120;
             case LANDSCAPES:
             case FREEBUILD:
-            case COCBASE:
                 return 50;
+            case COCBASE:
+                return 10;
             default:
                 return 30;
         }

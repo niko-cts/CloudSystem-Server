@@ -95,7 +95,7 @@ public class CloudServer implements Runnable{
      * @since 0.0.1
      */
     public void shutdownEverything() {
-        if (ServerHandler.getInstance().getServers().isEmpty()) {
+        if (!ServerHandler.getInstance().getServers().isEmpty()) {
             ServerHandler.getInstance().exitCloud();
             return;
         }

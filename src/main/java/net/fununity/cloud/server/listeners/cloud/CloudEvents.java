@@ -12,7 +12,6 @@ import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
 
 import java.util.List;
-import java.util.Vector;
 
 public class CloudEvents implements CloudEventListener {
 
@@ -28,14 +27,6 @@ public class CloudEvents implements CloudEventListener {
     public void newCloudEvent(CloudEvent cloudEvent) {
         ChannelHandlerContext ctx;
         switch (cloudEvent.getId()) {
-            case CloudEvent.SERVER_CREATE:
-                Vector data = cloudEvent.getData();
-                serverHandler.addServer(new Server(data.get(0).toString(), data.get(1).toString(), data.get(3).toString(), data.get(4).toString(), Integer.parseInt(data.get(5).toString()), (ServerType) data.get(6)));
-                break;
-            case CloudEvent.SERVER_CREATE_WITHOUT_PORT:
-                data = cloudEvent.getData();
-                serverHandler.addServer(new Server(data.get(0).toString(), data.get(1).toString(), data.get(2).toString(), data.get(3).toString(), Integer.parseInt(data.get(4).toString()), (ServerType) data.get(5)));
-                break;
             case CloudEvent.SERVER_CREATE_BY_TYPE:
                 serverHandler.createServerByServerType((ServerType) cloudEvent.getData().get(0));
                 break;

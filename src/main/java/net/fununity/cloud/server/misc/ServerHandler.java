@@ -130,7 +130,7 @@ public class ServerHandler {
         }
 
         if (idleServers < 1)
-            this.addServer(new Server(RandomStringUtils.random(16), oldServer.getServerIp(), oldServer.getServerMotd(), oldServer.getServerMotd(), oldServer.getMaxPlayers(), oldServer.getServerType()));
+            this.addServer(new Server(RandomStringUtils.random(16), oldServer.getServerIp(), oldServer.getServerType()));
     }
 
     /**
@@ -182,50 +182,41 @@ public class ServerHandler {
      * @since 1.0
      */
     public int getOptimalPort(ServerType serverType) {
-        return getNextFreeServerPort(ServerUtils.getDefaultPortForServerType(serverType));
+        return getNextFreeServerPort(ServerUtils.getDefaultPortForServerType(serverType), getAllServers());
     }
 
     /**
      * Returns the next free not used port considering all known servers.
-     * @param startPort int - the port to start searching.
+     * @param port int - the port to start searching.
      * @since 0.0.1
      * @return int - the highest port.
      */
-    private int getNextFreeServerPort(int startPort) {
-        int finalStartPort = startPort;
-        boolean portExits = getAllServers().stream().anyMatch(s -> s.getServerPort() == finalStartPort);
-        while (portExits) {
-            int p = startPort;
-            portExits = getAllServers().stream().anyMatch(s -> s.getServerPort() == p) || BLACKLISTED_PORTS.contains(startPort);
-
-            if (!portExits) {
-                ServerSocket ss = null;
-                DatagramSocket ds = null;
-                try {
-                    ss = new ServerSocket(startPort);
-                    ss.setReuseAddress(true);
-                    ds = new DatagramSocket(startPort);
-                    ds.setReuseAddress(true);
-                    return startPort;
-                } catch (IOException ignored) {
-                } finally {
-                    if (ds != null) {
-                        ds.close();
-                    }
-
-                    if (ss != null) {
-                        try {
-                            ss.close();
-                        } catch (IOException e) {
-                            /* should not be thrown */
-                        }
+    public int getNextFreeServerPort(int port, List<Server> servers) {
+        if (servers.stream().noneMatch(s -> s.getServerPort() == port) && !BLACKLISTED_PORTS.contains(port)) {
+            ServerSocket ss = null;
+            DatagramSocket ds = null;
+            try {
+                ss = new ServerSocket(port);
+                ss.setReuseAddress(true);
+                ds = new DatagramSocket(port);
+                ds.setReuseAddress(true);
+                return port;
+            } catch (IOException ignored) {
+            } finally {
+                if (ds != null) {
+                    ds.close();
+                }
+                if (ss != null) {
+                    try {
+                        ss.close();
+                    } catch (IOException e) {
+                        /* should not be thrown */
                     }
                 }
             }
-
-            startPort++;
         }
-        return startPort;
+
+        return getNextFreeServerPort(port + 1, servers);
     }
 
 
@@ -390,7 +381,7 @@ public class ServerHandler {
         else
             serverId += nextNumber;
 
-        addServer(new Server(serverId, "127.0.0.1", ServerUtils.getRamFromType(serverType) + "M", serverId, ServerUtils.getMaxPlayersOfServerType(serverType), serverType));
+        addServer(new Server(serverId, "127.0.0.1", serverType));
     }
 
 
