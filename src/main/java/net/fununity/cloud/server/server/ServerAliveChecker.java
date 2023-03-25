@@ -11,30 +11,35 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- *
- * <b>DISABLED</b> - Enable in {@link Server}
  * <p>
  * This class checks if the server instance is still alive.
  * If the server does not respond for a long period, the server will be removed.</p>
+ * This sends periodically an CLIENT_ALIVE_REQUEST event.
  * @see Server
  * @author Niko
  */
 public class ServerAliveChecker extends TimerTask {
 
-    private static final int PERIOD_TIME = 120000;
+    private static final int PERIOD_TIME = 3000;
+    private static final String LOG_MESSAGE = "[AliveChecker] {0} did not response in {1}ms. ";
+    private static final String LAST_RESPONSE = "Sending last response request...";
+    private static final String RESTART_RESPONSE = "Try to restart server...";
+    private static final String FLUSH_RESPONSE = "Flushing server!";
 
+    private final String serverLogWarn;
     private final Server server;
     private final Timer timer;
-    private ServerAliveInfo aliveInfo;
+    private int aliveOrdinal;
 
     /**
      * Instantiates the class and starts the repeation.
      * @param server Server - the server instance.
      * @since 0.0.1
      */
-    public ServerAliveChecker(Server server) {
+    protected ServerAliveChecker(Server server) {
         this.server = server;
-        this.aliveInfo = ServerAliveInfo.ALIVE;
+        this.aliveOrdinal = ServerAliveInfo.SEND.ordinal() - 1;
+        this.serverLogWarn = LOG_MESSAGE.replace("{0}", server.getServerId());
         timer = new Timer();
         timer.schedule(this, 20000, PERIOD_TIME);
     }
@@ -44,28 +49,31 @@ public class ServerAliveChecker extends TimerTask {
      */
     @Override
     public void run() {
-        if (server == null || server.getServerState() != ServerState.RUNNING) {
+        if (server == null || server.getServerState() == ServerState.STOPPED) {
             timer.cancel();
             return;
         }
 
-        if (this.aliveInfo != ServerAliveInfo.REMOVE)
-            this.aliveInfo = ServerAliveInfo.values()[this.aliveInfo.ordinal() + 1];
-        switch (this.aliveInfo) {
-            case NO_RESPONSE:
+        if (this.aliveOrdinal < ServerAliveInfo.REMOVE.ordinal())
+            this.aliveOrdinal++;
+
+        switch (ServerAliveInfo.values()[aliveOrdinal]) {
+            case SEND:
                 ClientHandler.getInstance().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST).setEventPriority(EventPriority.LOW));
                 break;
-            case NO_RESPONSE_2:
-                CloudServer.getLogger().warn(server.getServerId() + " did not response in " + (PERIOD_TIME * this.aliveInfo.ordinal()) + "ms. Sending last response request");
+            case NO_RESPONSE:
+                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + LAST_RESPONSE);
                 ClientHandler.getInstance().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST).setEventPriority(EventPriority.LOW));
                 break;
             case RESTART_REQUEST:
-                CloudServer.getLogger().warn(server.getServerId() + " did not response in " + (PERIOD_TIME * this.aliveInfo.ordinal()) + "ms. Try to restart server.");
+                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + RESTART_RESPONSE);
                 ServerHandler.getInstance().restartServer(server);
                 break;
             case REMOVE:
-                CloudServer.getLogger().warn(server.getServerId() + " did not response in " + (PERIOD_TIME * this.aliveInfo.ordinal()) + "ms. Flushing server.");
+                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + FLUSH_RESPONSE);
                 ServerHandler.getInstance().flushServer(server);
+                break;
+            default:
                 break;
         }
     }
@@ -75,13 +83,15 @@ public class ServerAliveChecker extends TimerTask {
     }
 
     public void receivedEvent() {
-        this.aliveInfo = ServerAliveInfo.ALIVE;
+        aliveOrdinal = 0;
     }
 
     private enum ServerAliveInfo {
         ALIVE,
+        WAIT,
+        WAIT_2,
+        SEND,
         NO_RESPONSE,
-        NO_RESPONSE_2,
         RESTART_REQUEST,
         REMOVE
     }

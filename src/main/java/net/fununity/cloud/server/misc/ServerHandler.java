@@ -252,9 +252,11 @@ public class ServerHandler {
     public void shutdownServer(Server server, ServerShutdown shutdown) {
         if (server != null) {
             server.setShutdownProcess(shutdown);
-            sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SERVER_REMOVE_REQUEST).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
-            if (getBungeeServers().isEmpty())
+            if (getBungeeServers().isEmpty()) {
                 stopServerFinally(server);
+            } else {
+                sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SERVER_REMOVE_REQUEST).addData(server.getServerId()).setEventPriority(EventPriority.HIGH));
+            }
         }
     }
 
@@ -644,9 +646,8 @@ public class ServerHandler {
      */
     public void flushServer(Server server) {
         sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SERVER_REMOVE_REQUEST).addData(server.getServerId()));
-        new ServerDeleter(server);
         this.clientHandler.sendDisconnect(server.getServerId());
-        this.clientHandler.removeClient(server.getServerId());
+        new ServerDeleter(server);
         checkStartQueue(server);
     }
 
@@ -668,10 +669,6 @@ public class ServerHandler {
 
     public Queue<Server> getStartQueue() {
         return new LinkedList<>(startQueue);
-    }
-
-    public ClientHandler getClientHandler() {
-        return clientHandler;
     }
 
 }

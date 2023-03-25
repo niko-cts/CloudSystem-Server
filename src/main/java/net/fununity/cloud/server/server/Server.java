@@ -20,11 +20,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * Abstract class to define the basic server instance.
- * @since 0.0.1
+ *
  * @author Marco Hajek, Niko
+ * @since 0.0.1
  */
 public final class Server {
 
@@ -67,15 +69,16 @@ public final class Server {
 
     /**
      * Creates a new server instance.
-     * @param serverId String - the identifier of the server.
-     * @param serverIp String - the ip of the server.
+     *
+     * @param serverId   String - the identifier of the server.
+     * @param serverIp   String - the ip of the server.
      * @param serverPort int - the port of the server.
-     * @param maxRam String - the Xmx java string.
-     * @param motd String - the motd of the server.
+     * @param maxRam     String - the Xmx java string.
+     * @param motd       String - the motd of the server.
      * @param serverType ServerType - the type of the server.
+     * @author Marco Hajek
      * @see ServerType
      * @since 0.0.1
-     * @author Marco Hajek
      */
     public Server(String serverId, String serverIp, int serverPort, String maxRam, String motd, int maxPlayers, ServerType serverType) {
         this.serverId = serverId;
@@ -95,55 +98,61 @@ public final class Server {
 
     /**
      * Creates a server with the optimal port, ram and motd.
-     * @param serverId String - the identifier of the server.
-     * @param serverIp String - the ip of the server.
+     *
+     * @param serverId   String - the identifier of the server.
+     * @param serverIp   String - the ip of the server.
      * @param serverType ServerType - the type of the server.
+     * @author Niko
      * @see ServerType
      * @since 0.0.1
-     * @author Niko
      */
     public Server(String serverId, String serverIp, ServerType serverType) {
-        this (serverId, serverIp, ServerHandler.getInstance().getOptimalPort(serverType), ServerUtils.getRamFromType(serverType) + "M", serverId, ServerUtils.getMaxPlayersOfServerType(serverType), serverType);
+        this(serverId, serverIp, ServerHandler.getInstance().getOptimalPort(serverType), ServerUtils.getRamFromType(serverType) + "M", serverId, ServerUtils.getMaxPlayersOfServerType(serverType), serverType);
     }
 
     /**
      * Gets the server identifier.
+     *
      * @return String - the identifier.
      * @since 0.0.1
      */
-    public String getServerId(){
+    public String getServerId() {
         return this.serverId;
     }
 
     /**
      * Gets the server ip.
+     *
      * @return String - the ip.
      * @since 0.0.1
      */
-    public String getServerIp(){
+    public String getServerIp() {
         return this.serverIp;
     }
 
     /**
      * Gets the server port.
+     *
      * @return int - the port.
      * @since 0.0.1
      */
-    public int getServerPort(){
+    public int getServerPort() {
         return this.serverPort;
     }
 
     /**
      * Gets the motd of the server.
+     *
      * @return String - the motd.
      * @since 0.0.1
      */
-    public String getServerMotd(){
+    public String getServerMotd() {
         return this.serverMotd;
     }
 
     /**
      * Get the amount of maximum players of the server
+     *
      * @return int - the maximum amount of players of the server
      * @since 0.0.1
      */
@@ -153,44 +162,50 @@ public final class Server {
 
     /**
      * Gets the servers maxram configuration.
+     *
      * @return String - the max ram config.
      * @since 0.0.1
      */
-    public String getServerMaxRam(){
+    public String getServerMaxRam() {
         return this.serverMaxRam;
     }
+
     /**
      * Gets the server type.
-     * @see ServerType
+     *
      * @return ServerType - the type.
+     * @see ServerType
      * @since 0.0.1
      */
-    public ServerType getServerType(){
+    public ServerType getServerType() {
         return this.serverType;
     }
 
     /**
      * Gets the current state of the server.
-     * @see ServerState
+     *
      * @return ServerState - the state.
+     * @see ServerState
      * @since 0.0.1
      */
-    public ServerState getServerState(){
+    public ServerState getServerState() {
         return this.serverState;
     }
 
     /**
      * Sets the state of the server.
-     * @see ServerState
+     *
      * @param state ServerState - the state.
+     * @see ServerState
      * @since 0.0.1
      */
-    public void setServerState(ServerState state){
+    public void setServerState(ServerState state) {
         this.serverState = state;
     }
 
     /**
      * Get the amount of current players on the server
+     *
      * @return int - Amount of players
      * @since 0.0.1
      */
@@ -201,20 +216,22 @@ public final class Server {
     /**
      * Adds the amount of players by one.
      * Creates new lobby if player count of lobby goes above 20
+     *
      * @param playerCount int - The amount of players on this server
      * @since 0.0.1
      */
     public void setPlayerCount(int playerCount) {
         this.playerCount = playerCount;
         if (serverType == ServerType.LOBBY && playerCount == 0 && !serverId.equals("Lobby01") &&
-                    ServerHandler.getInstance().getPlayerCountOfNetwork() + getMaxPlayers() < ServerHandler.getInstance().getLobbyServers().stream()
-                            .mapToInt(Server::getMaxPlayers).sum()) {
-                ServerHandler.getInstance().shutdownServer(this);
+                ServerHandler.getInstance().getPlayerCountOfNetwork() + getMaxPlayers() < ServerHandler.getInstance().getLobbyServers().stream()
+                        .mapToInt(Server::getMaxPlayers).sum()) {
+            ServerHandler.getInstance().shutdownServer(this);
         }
     }
 
     /**
      * Creates the path of the server.
+     *
      * @since 0.0.1
      */
     private void createServerPath() {
@@ -231,6 +248,7 @@ public final class Server {
 
     /**
      * Creates the server directory and copies the template if it doesn't exist.
+     *
      * @since 0.0.1
      */
     private void createIfNotExists() {
@@ -242,9 +260,10 @@ public final class Server {
                 LOG.warn(this.serverPath + ERROR_NOT_EXIST_CREATING);
                 Files.createDirectories(Paths.get(this.serverPath));
                 String copyPath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : ServerUtils.createTemplatePath(this.serverType);
-                if (!Files.exists(Paths.get(copyPath))) {
+                Path path = Paths.get(copyPath);
+                if (!Files.exists(path)) {
                     DebugLoggerUtil.getInstance().warn(copyPath + ERROR_NOT_EXIST_CREATING);
-                    Files.createDirectories(Paths.get(copyPath));
+                    Files.createDirectories(path);
                 }
                 if (copyPath.equals(backupPath)) {
                     DebugLoggerUtil.getInstance().info(INFO_COPY_BACKUP_FOR + this.serverId);
@@ -253,20 +272,22 @@ public final class Server {
                     DebugLoggerUtil.getInstance().info(INFO_COPY_TEMPLATE_FOR + this.serverId);
                     LOG.info(INFO_COPY_TEMPLATE_FOR + this.serverId);
                 }
-                Path src = Paths.get(copyPath);
                 Path dest = Paths.get(this.serverPath);
-                Files.walk(Paths.get(copyPath)).forEach(file -> {
-                    try {
-                        Files.copy(file, dest.resolve(src.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-                    } catch (IOException e) {
-                        DebugLoggerUtil.getInstance().warn("Could not copy file: " + file.toAbsolutePath() + " (" + e.getMessage() + ")");
-                        LOG.warn("Could not copy file: " + file.toAbsolutePath() + " (" + e.getMessage() + ")");
-                        e.printStackTrace();
-                    }
-                });
+                try (Stream<Path> paths = Files.walk(path)) {
+                    paths.forEach(file -> {
+                        try {
+                            Files.copy(file, dest.resolve(path.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+                        } catch (IOException exception) {
+                            DebugLoggerUtil.getInstance().warn("Could not copy file: " + file.toAbsolutePath() + " (" + exception.getMessage() + ")");
+                            exception.printStackTrace();
+                        }
+                    });
+                } catch (IOException e) {
+                    DebugLoggerUtil.getInstance().warn("Could not copy files: " + path + " (" + e.getMessage() + ")");
+                    ServerHandler.getInstance().flushServer(this);
+                }
             }
-        } catch (IOException e) {
-            LOG.warn(ERROR_COULD_NOT_CREATE_DIRECTORIES + e.getMessage());
+        } catch (IOException exception) {
             ServerHandler.getInstance().flushServer(this);
         }
     }
@@ -274,12 +295,12 @@ public final class Server {
 
     private void setServerProperties() {
         try {
-            if(this.serverType != ServerType.BUNGEECORD) {
+            if (this.serverType != ServerType.BUNGEECORD) {
                 File file = new File(this.serverPath + FILE_SERVER_PROPERTIES);
                 file.createNewFile();
                 BufferedWriter writer = new BufferedWriter(new FileWriter(file));
                 writer.write("server-ip=" + this.serverIp + "\n");
-                writer.write("server-port=" + this.serverPort+ "\n");
+                writer.write("server-port=" + this.serverPort + "\n");
                 writer.write("motd=" + this.serverMotd + "\n");
                 writer.write("max-players=" + this.maxPlayers + "\n");
                 writer.write("allow-flight=true\n");
@@ -295,6 +316,7 @@ public final class Server {
 
     /**
      * Tries to start the server instance.
+     *
      * @since 0.0.1
      */
     public void start() {
@@ -316,7 +338,8 @@ public final class Server {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverPath + " " + this.serverId + " " + this.serverMaxRam);
             this.serverState = ServerState.RUNNING;
 
-            if (serverType != ServerType.BUNGEECORD) this.aliveChecker = new ServerAliveChecker(this);
+            if (serverType != ServerType.BUNGEECORD)
+                this.aliveChecker = new ServerAliveChecker(this);
 
             LOG.info(INFO_SERVER_STARTED + this.serverId);
             DebugLoggerUtil.getInstance().info(INFO_SERVER_STARTED + this.serverId);
@@ -329,6 +352,7 @@ public final class Server {
 
     /**
      * Tries to stop a server.
+     *
      * @since 0.0.1
      */
     public void stop() {
@@ -362,6 +386,7 @@ public final class Server {
 
     /**
      * Moves the current server to the backup path.
+     *
      * @since 0.0.1
      */
     public void moveToBackup(boolean copy) throws IOException {
@@ -382,10 +407,11 @@ public final class Server {
 
     /**
      * Deletes the whole server recursively.
+     *
      * @param content File - the file to be deleted.
      * @since 0.0.1
      */
-    protected void deleteServerContent(File content) throws IOException {
+    void deleteServerContent(File content) throws IOException {
         File[] allContents = content.listFiles();
         if (allContents != null) {
             for (File file : allContents) {
@@ -400,6 +426,7 @@ public final class Server {
 
     /**
      * Sets the max players of the server.
+     *
      * @param maxPlayers int - max players
      */
     public void setMaxPlayers(int maxPlayers) {
@@ -409,6 +436,7 @@ public final class Server {
 
     /**
      * Check if server has received remove confirmation from bungee.
+     *
      * @return IServerShutdown - remove confirmation.
      * @since 0.0.1
      */
@@ -419,6 +447,7 @@ public final class Server {
     /**
      * Sets remove confirmation to true.
      * Remove confirmation needs to be sent from bungee, so the server can finally be stopped.
+     *
      * @param shutdownProcess {@link ServerShutdown} - the process instance.
      * @since 0.0.1
      */
