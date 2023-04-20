@@ -71,7 +71,7 @@ public class ServerAliveChecker extends TimerTask {
                 break;
             case REMOVE:
                 CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + FLUSH_RESPONSE);
-                ServerHandler.getInstance().flushServer(server);
+                ServerHandler.getInstance().deleteServer(server);
                 break;
             default:
                 break;

@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.events.Event;
 import net.fununity.cloud.common.events.EventSendingManager;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
+import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.server.Server;
 import org.apache.log4j.ConsoleAppender;
@@ -170,6 +171,17 @@ public class ClientHandler {
             if (entry.getKey().toLowerCase().contains("lobby") || entry.getKey().toLowerCase().contains("main")) {
                 this.sendEvent(entry.getValue(), cloudEvent);
             }
+        }
+    }
+
+    /**
+     * Send coc attack server
+     * @since 1.0.0
+     */
+    public void sendCocAttackServerAmount() {
+        int size = serverHandler.getServersByType(ServerType.COCATTACK).size();
+        for (Server cocbase : serverHandler.getServersByType(ServerType.COCBASE)) {
+            this.sendEvent(getClientContext(cocbase.getServerId()), new CloudEvent(CloudEvent.COC_RESPONSE_ATTACK_SERVER_AMOUNT).addData(size));
         }
     }
 

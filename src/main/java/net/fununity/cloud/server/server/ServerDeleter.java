@@ -56,6 +56,8 @@ public class ServerDeleter extends TimerTask {
 
         if (serverType == ServerType.LOBBY)
             ClientHandler.getInstance().sendLobbyInformationToLobbies();
+        else if (serverType == ServerType.COCATTACK)
+            ClientHandler.getInstance().sendCocAttackServerAmount();
         else
             MinigameHandler.getInstance().removeServer(server, server.getShutdownProcess() != null && server.getShutdownProcess().needsMinigameCheck());
 

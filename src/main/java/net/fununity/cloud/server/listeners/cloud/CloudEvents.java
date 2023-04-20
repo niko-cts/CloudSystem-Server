@@ -52,6 +52,8 @@ public class CloudEvents implements CloudEventListener {
 
                 if (def.getServerType() == ServerType.LOBBY) {
                     clientHandler.sendLobbyInformationToLobbies();
+                } else if (def.getServerType() == ServerType.COCATTACK) {
+                    clientHandler.sendCocAttackServerAmount();
                 }
 
                 CloudServer.getLogger().info("Client registered: " + def.getServerId());
