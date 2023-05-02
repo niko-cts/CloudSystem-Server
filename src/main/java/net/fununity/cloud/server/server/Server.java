@@ -6,6 +6,7 @@ import net.fununity.cloud.common.utils.DebugLoggerUtil;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.misc.ServerShutdown;
 import net.fununity.cloud.server.misc.ServerUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -15,12 +16,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 /**
  * Abstract class to define the basic server instance.
@@ -30,8 +26,6 @@ import java.util.stream.Stream;
  */
 public final class Server {
 
-    private static final String ERROR_NOT_EXIST_CREATING = " does not exists. Creating...";
-    private static final String ERROR_COULD_NOT_CREATE_DIRECTORIES = "Could not create directories: ";
     private static final String ERROR_COULD_NOT_SET_PROPERTIES = "Could not set properties: ";
     private static final String ERROR_COULD_NOT_RUN_COMMAND = "Could not execute command: ";
     private static final String ERROR_SERVER_ALREADY_RUNNING = "Server is already running!";
@@ -41,6 +35,7 @@ public final class Server {
     private static final String INFO_COPY_BACKUP_FOR = "Copying backup for ";
     private static final String INFO_SERVER_STARTED = "Server started: ";
     private static final String INFO_SERVER_STOPPED = "Server stopped: ";
+    private static final String INFO_DELETE_SERVER = "Server deleted: ";
     private static final String FILE_START = "start.sh";
     private static final String FILE_STOP = "stop.sh";
     private static final String FILE_SERVER_PROPERTIES = "server.properties";
@@ -92,7 +87,7 @@ public final class Server {
         this.playerCount = 0;
         this.shutdownProcess = null;
         this.createServerPath();
-        this.createIfNotExists();
+        this.createFiles();
         this.setServerProperties();
     }
 
@@ -235,15 +230,13 @@ public final class Server {
      * @since 0.0.1
      */
     private void createServerPath() {
-        StringBuilder path = new StringBuilder();
-        path.append("./Servers/");
-        path.append(this.serverType == ServerType.BUNGEECORD ? "BungeeCord/" : "Spigot/");
-        path.append(this.serverId).append("/");
-        this.serverPath = path.toString();
-        StringBuilder backup = new StringBuilder();
-        backup.append("./Servers/Backups/");
-        backup.append(this.serverId).append("/");
-        this.backupPath = backup.toString();
+        this.serverPath = new StringBuilder()
+                .append("./Servers/")
+                .append(this.serverType == ServerType.BUNGEECORD ? "BungeeCord/" : "Spigot/")
+                .append(this.serverId).append("/").toString();
+        this.backupPath = new StringBuilder()
+                .append("./Servers/Backups/")
+                .append(this.serverId).append("/").toString();
     }
 
     /**
@@ -251,42 +244,40 @@ public final class Server {
      *
      * @since 0.0.1
      */
-    private void createIfNotExists() {
+    private void createFiles() {
         try {
-            if (Files.exists(Paths.get(this.serverPath)) && !Files.exists(Paths.get(this.serverPath + FILE_START))) {
-                deleteServerContent(Paths.get(this.serverPath).toFile());
+            File serverDirectory = new File(this.serverPath);
+            if (serverDirectory.exists()) {
+                FileUtils.deleteDirectory(serverDirectory);
             }
-            if (!Files.exists(Paths.get(this.serverPath))) {
-                LOG.warn(this.serverPath + ERROR_NOT_EXIST_CREATING);
-                Files.createDirectories(Paths.get(this.serverPath));
-                String copyPath = Files.exists(Paths.get(this.backupPath)) ? this.backupPath : ServerUtils.createTemplatePath(this.serverType);
-                Path path = Paths.get(copyPath);
-                if (!Files.exists(path)) {
-                    DebugLoggerUtil.getInstance().warn(copyPath + ERROR_NOT_EXIST_CREATING);
-                    Files.createDirectories(path);
-                }
-                if (copyPath.equals(backupPath)) {
-                    DebugLoggerUtil.getInstance().info(INFO_COPY_BACKUP_FOR + this.serverId);
-                    LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
-                } else {
-                    DebugLoggerUtil.getInstance().info(INFO_COPY_TEMPLATE_FOR + this.serverId);
-                    LOG.info(INFO_COPY_TEMPLATE_FOR + this.serverId);
-                }
-                Path dest = Paths.get(this.serverPath);
-                try (Stream<Path> paths = Files.walk(path)) {
-                    paths.forEach(file -> {
-                        try {
-                            Files.copy(file, dest.resolve(path.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-                        } catch (IOException exception) {
-                            DebugLoggerUtil.getInstance().warn("Could not copy file: " + file.toAbsolutePath() + " (" + exception.getMessage() + ")");
-                            exception.printStackTrace();
-                        }
-                    });
-                } catch (IOException e) {
-                    DebugLoggerUtil.getInstance().warn("Could not copy files: " + path + " (" + e.getMessage() + ")");
-                    ServerHandler.getInstance().flushServer(this);
-                }
+
+            String copyPath;
+            if (new File(this.backupPath).exists()) {
+                copyPath = this.backupPath;
+                DebugLoggerUtil.getInstance().info(INFO_COPY_BACKUP_FOR + this.serverId);
+                LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
+            } else {
+                copyPath = ServerUtils.getTemplatePath(this.serverType);
+                DebugLoggerUtil.getInstance().info(INFO_COPY_TEMPLATE_FOR + this.serverId);
+                LOG.info(INFO_COPY_TEMPLATE_FOR + this.serverId);
             }
+
+            FileUtils.copyDirectory(new File(copyPath), serverDirectory);
+            /*Path dest = Paths.get(this.serverPath);
+            try (Stream<Path> paths = Files.walk(path)) {
+                paths.forEach(file -> {
+                    try {
+                        Files.copy(file, dest.resolve(path.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+                    } catch (IOException exception) {
+                        DebugLoggerUtil.getInstance().warn("Could not copy file: " + file.toAbsolutePath() + " (" + exception.getMessage() + ")");
+                        exception.printStackTrace();
+                    }
+                });
+            } catch (IOException e) {
+                DebugLoggerUtil.getInstance().warn("Could not copy files: " + path + " (" + e.getMessage() + ")");
+                ServerHandler.getInstance().flushServer(this);
+            }*/
+
         } catch (IOException exception) {
             ServerHandler.getInstance().flushServer(this);
         }
@@ -297,17 +288,18 @@ public final class Server {
         try {
             if (this.serverType != ServerType.BUNGEECORD) {
                 File file = new File(this.serverPath + FILE_SERVER_PROPERTIES);
-                file.createNewFile();
-                BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                writer.write("server-ip=" + this.serverIp + "\n");
-                writer.write("server-port=" + this.serverPort + "\n");
-                writer.write("motd=" + this.serverMotd + "\n");
-                writer.write("max-players=" + this.maxPlayers + "\n");
-                writer.write("allow-flight=true\n");
-                writer.write("online-mode=false\n");
-                writer.write("allow-nether=false\n");
-                writer.flush();
-                writer.close();
+                if (file.createNewFile()) {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                    writer.write("server-ip=" + this.serverIp + "\n");
+                    writer.write("server-port=" + this.serverPort + "\n");
+                    writer.write("motd=" + this.serverMotd + "\n");
+                    writer.write("max-players=" + this.maxPlayers + "\n");
+                    writer.write("allow-flight=true\n");
+                    writer.write("online-mode=false\n");
+                    writer.write("allow-nether=false\n");
+                    writer.flush();
+                    writer.close();
+                }
             }
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_SET_PROPERTIES + e.getMessage());
@@ -374,10 +366,10 @@ public final class Server {
         try {
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
             this.serverState = ServerState.STOPPED;
-            new ServerDeleter(this);
-
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
             DebugLoggerUtil.getInstance().info(INFO_SERVER_STOPPED + this.serverId);
+
+            new ServerDeleter(this);
         } catch (IOException e) {
             LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
             ServerHandler.getInstance().flushServer(this);
@@ -390,38 +382,27 @@ public final class Server {
      * @since 0.0.1
      */
     public void moveToBackup(boolean copy) throws IOException {
-        if (!Files.exists(Paths.get(this.backupPath))) {
-            LOG.warn(this.backupPath + ERROR_NOT_EXIST_CREATING);
-            Files.createDirectories(Paths.get(this.backupPath));
+        File backupFile = new File(this.backupPath);
+        if (!backupFile.exists()) {
+            backupFile.mkdirs();
         }
+
         LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
-        Path src = Paths.get(this.serverPath);
-        Path dest = Paths.get(this.backupPath);
-        deleteServerContent(dest.toFile());
+        FileUtils.deleteDirectory(backupFile);
 
         if (copy)
-            Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+            FileUtils.copyDirectory(new File(this.serverPath), backupFile, false);
         else
-            Files.move(src, dest);
+            FileUtils.moveDirectory(new File(this.serverPath), backupFile);
     }
 
     /**
-     * Deletes the whole server recursively.
-     *
-     * @param content File - the file to be deleted.
-     * @since 0.0.1
+     * Deletes the whole instance directory.
+     * @since 1.0.0
      */
-    void deleteServerContent(File content) throws IOException {
-        File[] allContents = content.listFiles();
-        if (allContents != null) {
-            for (File file : allContents) {
-                if (file.isDirectory())
-                    deleteServerContent(file);
-                else
-                    file.delete();
-            }
-        }
-        content.delete();
+    public void deleteContent() {
+        LOG.info(INFO_DELETE_SERVER + this.serverPath);
+        FileUtils.deleteQuietly(new File(this.serverPath));
     }
 
     /**

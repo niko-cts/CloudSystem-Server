@@ -51,10 +51,15 @@ public class ConfigHandler {
         return instance;
     }
 
+
+    public static void createInstance(String[] args) {
+        instance = new ConfigHandler(args);
+    }
+
     private File configFile;
     private final Logger logger = Logger.getLogger(ConfigHandler.class);
 
-    private ConfigHandler() {
+    private ConfigHandler(String... args) {
         logger.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
         logger.setAdditivity(false);
         logger.setLevel(Level.INFO);
@@ -65,11 +70,22 @@ public class ConfigHandler {
                 if (newFile)
                     this.loadDefaultConfiguration();
             }
-            this.loadDefaultServers();
+            if (args.length == 0 || args[0].equalsIgnoreCase("default"))
+                this.loadDefaultServers();
+            else if (!args[0].equalsIgnoreCase("nodefaults")) {
+                for (String arg : args) {
+                    try {
+                        ServerHandler.getInstance().createServerByServerType(ServerType.valueOf(arg));
+                    } catch (IllegalArgumentException exception) {
+                        logger.warn("Could not start server: " + arg);
+                    }
+                }
+            }
         } catch (IOException e) {
             logger.warn(e.getMessage());
         }
     }
+
 
     /**
      * Saves the default configuration to the file.
@@ -90,7 +106,7 @@ public class ConfigHandler {
             Element defaultServers = doc.createElement("defaultservers");
             rootElem.appendChild(defaultServers);
 
-            defaultServers.appendChild(this.createServer(doc, "Main", "127.0.0.1", "BungeeCord"));
+            defaultServers.appendChild(this.createServer(doc, "Main01", "127.0.0.1", "BungeeCord"));
             defaultServers.appendChild(this.createServer(doc, "Lobby01", "127.0.0.1", "Lobby"));
 
             TransformerFactory transformerFactory = TransformerFactory.newInstance();

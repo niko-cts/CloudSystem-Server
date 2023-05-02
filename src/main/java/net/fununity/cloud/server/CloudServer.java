@@ -37,8 +37,9 @@ public class CloudServer implements Runnable{
         LOG.setLevel(Level.INFO);
         LOG.setAdditivity(false);
         new Thread(new CloudServer()).start();
-        ConfigHandler.getInstance();
+        ConfigHandler.createInstance(args);
         CloudConsole.getInstance();
+        LOG.info("Cloud successfully loaded.");
     }
 
     public static Logger getLogger(){

@@ -41,7 +41,7 @@ public class ServerAliveChecker extends TimerTask {
         this.aliveOrdinal = ServerAliveInfo.SEND.ordinal() - 1;
         this.serverLogWarn = LOG_MESSAGE.replace("{0}", server.getServerId());
         timer = new Timer();
-        timer.schedule(this, 20000, PERIOD_TIME);
+        timer.schedule(this, 40000, PERIOD_TIME);
     }
 
     /**
@@ -58,23 +58,19 @@ public class ServerAliveChecker extends TimerTask {
             this.aliveOrdinal++;
 
         switch (ServerAliveInfo.values()[aliveOrdinal]) {
-            case SEND:
-                ClientHandler.getInstance().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST).setEventPriority(EventPriority.LOW));
-                break;
-            case NO_RESPONSE:
+            case SEND -> ClientHandler.getInstance().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST).setEventPriority(EventPriority.LOW));
+            case NO_RESPONSE -> {
                 CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + LAST_RESPONSE);
                 ClientHandler.getInstance().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST).setEventPriority(EventPriority.LOW));
-                break;
-            case RESTART_REQUEST:
+            }
+            case RESTART_REQUEST -> {
                 CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + RESTART_RESPONSE);
                 ServerHandler.getInstance().restartServer(server);
-                break;
-            case REMOVE:
+            }
+            case REMOVE -> {
                 CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + FLUSH_RESPONSE);
                 ServerHandler.getInstance().deleteServer(server);
-                break;
-            default:
-                break;
+            }
         }
     }
 

@@ -6,9 +6,10 @@ import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
+import org.apache.commons.io.FileUtils;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -29,7 +30,7 @@ public class ServerDeleter extends TimerTask {
     public ServerDeleter(Server server) {
         this.server = server;
         this.server.stopAliveChecker();
-        new Timer().schedule(this, 200);
+        new Timer().schedule(this, 500);
     }
 
     /**
@@ -42,8 +43,10 @@ public class ServerDeleter extends TimerTask {
         try {
             if (serverType == ServerType.LANDSCAPES || serverType == ServerType.FREEBUILD || serverType == ServerType.COCBASE)
                 server.moveToBackup(false);
-            else
-                server.deleteServerContent(Paths.get(server.serverPath).toFile());
+            else  {
+                server.deleteContent();
+                FileUtils.deleteQuietly(new File(server.serverPath));
+            }
         } catch (IOException exception) {
             Server.LOG.warn("Error while deleting server: " + exception.getMessage());
             DebugLoggerUtil.getInstance().warn("Error while deleting server: " + exception.getMessage());

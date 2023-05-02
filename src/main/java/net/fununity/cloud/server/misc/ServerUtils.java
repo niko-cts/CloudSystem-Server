@@ -19,53 +19,25 @@ public class ServerUtils {
      * @return String - the path.
      * @since 0.0.1
      */
-    public static String createTemplatePath(ServerType serverType) {
+    public static String getTemplatePath(ServerType serverType) {
         StringBuilder path = new StringBuilder();
         path.append("./Servers/Templates/");
-        switch(serverType) {
-            case BUNGEECORD:
-                path.append("BungeeCord/");
-                break;
-            case LOBBY:
-                path.append("Lobby/");
-                break;
-            case CAVEHUNT:
-                path.append("CaveHunt/");
-                break;
-            case FLOWERWARS2x1:
-                path.append("FlowerWars2x1/");
-                break;
-            case FLOWERWARS2x2:
-                path.append("FlowerWars2x2/");
-                break;
-            case FLOWERWARS4x2:
-                path.append("FlowerWars4x2/");
-                break;
-            case BEATINGPIRATES:
-                path.append("BeatingPirates/");
-                break;
-            case PAINTTHESHEEP:
-                path.append("PaintTheSheep/");
-                break;
-            case LANDSCAPES:
-                path.append("Landscapes/");
-                break;
-            case FREEBUILD:
-                path.append("FreeBuild/");
-                break;
-            case COCBASE:
-                path.append("ClashOfClubs-Base/");
-                break;
-            case COCATTACK:
-                path.append("ClashOfClubs-Attack/");
-                break;
-            case TTT:
-                path.append("TTT/");
-                break;
-            case SKYDILATION:
-                path.append("SkyDilation/");
-                break;
-            default:
+        switch (serverType) {
+            case BUNGEECORD -> path.append("BungeeCord/");
+            case LOBBY -> path.append("Lobby/");
+            case CAVEHUNT -> path.append("CaveHunt/");
+            case FLOWERWARS2x1 -> path.append("FlowerWars2x1/");
+            case FLOWERWARS2x2 -> path.append("FlowerWars2x2/");
+            case FLOWERWARS4x2 -> path.append("FlowerWars4x2/");
+            case BEATINGPIRATES -> path.append("BeatingPirates/");
+            case PAINTTHESHEEP -> path.append("PaintTheSheep/");
+            case LANDSCAPES -> path.append("Landscapes/");
+            case FREEBUILD -> path.append("FreeBuild/");
+            case COCBASE -> path.append("ClashOfClubs-Base/");
+            case COCATTACK -> path.append("ClashOfClubs-Attack/");
+            case TTT -> path.append("TTT/");
+            case SKYDILATION -> path.append("SkyDilation/");
+            default -> path.append("undefined/");
         }
         return path.toString();
     }
@@ -77,18 +49,12 @@ public class ServerUtils {
      * @since 0.0.1
      */
     public static int getRamFromType(ServerType serverType) {
-        switch (serverType) {
-            case LOBBY:
-                return 1536;
-            case LANDSCAPES:
-            case FREEBUILD:
-            case COCBASE:
-                return 4096;
-            case FLOWERWARS2x1:
-                return 256;
-            default:
-                return 512;
-        }
+        return switch (serverType) {
+            case LOBBY -> 1536;
+            case LANDSCAPES, FREEBUILD, COCBASE -> 4096;
+            case BUNGEECORD -> 512;
+            default -> 1024;
+        };
     }
 
     /**
@@ -98,17 +64,12 @@ public class ServerUtils {
      * @since 0.0.1
      */
     public static int getMaxPlayersOfServerType(ServerType serverType) {
-        switch (serverType) {
-            case BUNGEECORD:
-                return 120;
-            case LANDSCAPES:
-            case FREEBUILD:
-                return 50;
-            case COCBASE:
-                return 10;
-            default:
-                return 30;
-        }
+        return switch (serverType) {
+            case BUNGEECORD -> 120;
+            case LANDSCAPES, FREEBUILD -> 50;
+            case COCBASE -> 10;
+            default -> 20;
+        };
     }
 
     /**
@@ -118,32 +79,20 @@ public class ServerUtils {
      * @since 0.0.1
      */
     public static int getDefaultPortForServerType(ServerType serverType) {
-        switch(serverType) {
-            case BUNGEECORD:
-                return 25565;
-            case LOBBY:
-                return 25566;
-            case BEATINGPIRATES:
-                return 26000;
-            case PAINTTHESHEEP:
-                return 26250;
-            case CAVEHUNT:
-                return 26500;
-            case FLOWERWARS2x1:
-                return 26750;
-            case FLOWERWARS2x2:
-                return 27000;
-            case FLOWERWARS4x2:
-                return 27250;
-            case FREEBUILD:
-                return 27500;
-            case TTT:
-                return 27750;
-            case SKYDILATION:
-                return 28000;
-            default:
-                return 28250;
-        }
+        return switch (serverType) {
+            case BUNGEECORD -> 25565;
+            case LOBBY -> 25566;
+            case BEATINGPIRATES -> 26000;
+            case PAINTTHESHEEP -> 26250;
+            case CAVEHUNT -> 26500;
+            case FLOWERWARS2x1 -> 26750;
+            case FLOWERWARS2x2 -> 27000;
+            case FLOWERWARS4x2 -> 27250;
+            case FREEBUILD -> 27500;
+            case TTT -> 27750;
+            case SKYDILATION -> 28000;
+            default -> 28250;
+        };
     }
 
 }

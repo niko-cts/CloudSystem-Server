@@ -32,21 +32,26 @@ public class CloudEvents implements CloudEventListener {
                 break;
             case CloudEvent.CLIENT_REGISTER:
                 ctx = (ChannelHandlerContext) cloudEvent.getData().get(cloudEvent.getData().size() - 1);
-                clientHandler.saveClient(cloudEvent.getData().get(0).toString(), ctx);
+                String clientId = cloudEvent.getData().get(0).toString();
+                clientHandler.saveClient(clientId, ctx);
+
+                int port;
 
                 if (cloudEvent.getData().size() == 2) { // BUNGEE CORD ONLY
-                    clientHandler.setClientIdToEventSender(ctx, "Main");
-                    CloudServer.getLogger().info("Client registered: Main");
-                    serverHandler.checkStartQueue(ServerHandler.getInstance().getBungeeServers().get(0));
-                    break;
+                    clientHandler.setClientIdToEventSender(ctx, clientId);
+                    List<Server> bungeeServers = ServerHandler.getInstance().getBungeeServers();
+                    port = bungeeServers.get(bungeeServers.size() - 1).getServerPort();
+                } else {
+                    port = Integer.parseInt(cloudEvent.getData().get(1).toString());
                 }
 
-                int port = Integer.parseInt(cloudEvent.getData().get(1).toString());
                 clientHandler.remapChannelHandlerContext(ctx, port);
                 ServerDefinition def = serverHandler.getServerDefinitionByPort(port);
 
-                if (def == null)
+                if (def == null) {
+                    CloudServer.getLogger().warn("Could not create server definition of " + clientId + ":" + port);
                     break;
+                }
 
                 clientHandler.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def));
 
