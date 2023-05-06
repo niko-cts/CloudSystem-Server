@@ -3,6 +3,7 @@ package net.fununity.cloud.server.server;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.common.utils.DebugLoggerUtil;
+import net.fununity.cloud.server.misc.ClientHandler;
 import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.misc.ServerShutdown;
 import net.fununity.cloud.server.misc.ServerUtils;
@@ -263,21 +264,6 @@ public final class Server {
             }
 
             FileUtils.copyDirectory(new File(copyPath), serverDirectory);
-            /*Path dest = Paths.get(this.serverPath);
-            try (Stream<Path> paths = Files.walk(path)) {
-                paths.forEach(file -> {
-                    try {
-                        Files.copy(file, dest.resolve(path.relativize(file)), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
-                    } catch (IOException exception) {
-                        DebugLoggerUtil.getInstance().warn("Could not copy file: " + file.toAbsolutePath() + " (" + exception.getMessage() + ")");
-                        exception.printStackTrace();
-                    }
-                });
-            } catch (IOException e) {
-                DebugLoggerUtil.getInstance().warn("Could not copy files: " + path + " (" + e.getMessage() + ")");
-                ServerHandler.getInstance().flushServer(this);
-            }*/
-
         } catch (IOException exception) {
             ServerHandler.getInstance().flushServer(this);
         }
@@ -342,6 +328,7 @@ public final class Server {
         }
     }
 
+
     /**
      * Tries to stop a server.
      *
@@ -355,6 +342,8 @@ public final class Server {
             return;
         }
 
+        this.serverState = ServerState.STOPPED;
+
         File file = new File(this.serverPath + FILE_STOP);
         if (!file.exists()) {
             LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
@@ -364,8 +353,8 @@ public final class Server {
         }
 
         try {
+            ClientHandler.getInstance().sendDisconnect(getServerId());
             Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
-            this.serverState = ServerState.STOPPED;
             LOG.info(INFO_SERVER_STOPPED + this.serverId);
             DebugLoggerUtil.getInstance().info(INFO_SERVER_STOPPED + this.serverId);
 

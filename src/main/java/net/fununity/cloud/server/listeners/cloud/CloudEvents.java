@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.cloud.CloudEventListener;
 import net.fununity.cloud.common.server.ServerDefinition;
+import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.ClientHandler;
@@ -67,7 +68,7 @@ public class CloudEvents implements CloudEventListener {
             case CloudEvent.CLIENT_DISCONNECT_GRACEFULLY:
                 String serverId = cloudEvent.getData().get(0).toString();
                 Server server = serverHandler.getServerByIdentifier(serverId);
-                if (server != null)
+                if (server != null && server.getServerState() != ServerState.STOPPED)
                     serverHandler.stopServerFinally(server);
                 break;
             case CloudEvent.BUNGEE_SERVER_REMOVED_RESPONSE:

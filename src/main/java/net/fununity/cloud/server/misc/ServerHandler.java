@@ -293,7 +293,6 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void stopServerFinally(Server server) {
-        this.clientHandler.sendDisconnect(server.getServerId());
         server.stop(); // will create ServerDeleter and removes server from list
     }
 
@@ -424,27 +423,24 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void exitCloud() {
-        ServerShutdown serverShutdown = new ServerShutdown() {
+        this.startQueue.clear();
+        getServers().stream().filter(s -> s.getServerType() != ServerType.BUNGEECORD).findFirst().ifPresent(s -> shutdownServer(s, new ServerShutdown(false) {
             @Override
             public void serverStopped() {
-                if (getServers().size() == getBungeeServers().size()) {
-                    ServerShutdown cloudShutdown = new ServerShutdown() {
-                        @Override
-                        public void serverStopped() {
-                            if (getServers().isEmpty())
-                                CloudServer.getInstance().shutdownEverything();
-                        }
-                    };
-                    for (Server bungeeServer : getBungeeServers()) {
-                        shutdownServer(bungeeServer, cloudShutdown);
-                    }
-                }
+                CloudServer.getInstance().shutdownEverything();
             }
-        };
-        this.startQueue.clear();
-        for (Server server : getServers()) {
-            if (server.getServerType() != ServerType.BUNGEECORD)
-                shutdownServer(server, serverShutdown);
+        }));
+        if (getServers().stream().noneMatch(s -> s.getServerType() != ServerType.BUNGEECORD)) {
+            getBungeeServers().stream().findFirst().ifPresent(b -> shutdownServer(b, new ServerShutdown() {
+                /**
+                 * Will be called, if server completely stops.
+                 * @since 0.0.1
+                 */
+                @Override
+                public void serverStopped() {
+                    CloudServer.getInstance().shutdownEverything();
+                }
+            }));
         }
     }
 
@@ -646,6 +642,8 @@ public class ServerHandler {
      */
     public void flushServer(Server server) {
         sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SERVER_REMOVE_REQUEST).addData(server.getServerId()));
+        server.setServerState(ServerState.STOPPED);
+        server.setShutdownProcess(null);
         this.clientHandler.sendDisconnect(server.getServerId());
         new ServerDeleter(server);
         checkStartQueue(server);

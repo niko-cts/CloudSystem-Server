@@ -23,7 +23,6 @@ public class ServerAliveChecker extends TimerTask {
     private static final int PERIOD_TIME = 3000;
     private static final String LOG_MESSAGE = "[AliveChecker] {0} did not response in {1}ms. ";
     private static final String LAST_RESPONSE = "Sending last response request...";
-    private static final String RESTART_RESPONSE = "Try to restart server...";
     private static final String FLUSH_RESPONSE = "Flushing server!";
 
     private final String serverLogWarn;
@@ -60,16 +59,12 @@ public class ServerAliveChecker extends TimerTask {
         switch (ServerAliveInfo.values()[aliveOrdinal]) {
             case SEND -> ClientHandler.getInstance().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST).setEventPriority(EventPriority.LOW));
             case NO_RESPONSE -> {
-                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + LAST_RESPONSE);
+                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", String.valueOf(PERIOD_TIME * aliveOrdinal)) + LAST_RESPONSE);
                 ClientHandler.getInstance().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST).setEventPriority(EventPriority.LOW));
             }
-            case RESTART_REQUEST -> {
-                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + RESTART_RESPONSE);
-                ServerHandler.getInstance().restartServer(server);
-            }
             case REMOVE -> {
-                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", (PERIOD_TIME * aliveOrdinal) + "") + FLUSH_RESPONSE);
-                ServerHandler.getInstance().deleteServer(server);
+                CloudServer.getLogger().warn(serverLogWarn.replace("{1}", String.valueOf(PERIOD_TIME * aliveOrdinal)) + FLUSH_RESPONSE);
+                ServerHandler.getInstance().flushServer(server);
             }
         }
     }
@@ -88,7 +83,6 @@ public class ServerAliveChecker extends TimerTask {
         WAIT_2,
         SEND,
         NO_RESPONSE,
-        RESTART_REQUEST,
         REMOVE
     }
 }
