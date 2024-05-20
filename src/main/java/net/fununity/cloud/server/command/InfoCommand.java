@@ -1,8 +1,8 @@
 package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
+import net.fununity.cloud.server.server.ServerHandler;
 
 public class InfoCommand extends Command {
 

@@ -1,9 +1,8 @@
 package net.fununity.cloud.server.command;
 
-import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
+import net.fununity.cloud.server.server.ServerHandler;
 
 import java.io.IOException;
 
@@ -42,7 +41,7 @@ public class BackupCommand extends Command {
         try {
             server.moveToBackup(true);
         } catch (IOException e) {
-            CloudServer.getLogger().warn("Error while backuping server: " + e.getMessage());
+            log.error("Error while try to backup server: " + e.getMessage());
         }
     }
 }

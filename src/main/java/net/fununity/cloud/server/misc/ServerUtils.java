@@ -1,6 +1,7 @@
 package net.fununity.cloud.server.misc;
 
 import net.fununity.cloud.common.server.ServerType;
+import net.fununity.cloud.server.server.ServerHandler;
 
 /**
  * This class holds utility methods for server creation.
@@ -58,9 +59,9 @@ public class ServerUtils {
     }
 
     /**
-     * Gets the max amount of players of a server type.
+     * Gets the max number of players of a server type.
      * @param serverType {@link ServerType} - the server type.
-     * @return int - the maximum amount of players on the server.
+     * @return int - the maximum number of players on the server.
      * @since 0.0.1
      */
     public static int getMaxPlayersOfServerType(ServerType serverType) {
@@ -73,9 +74,9 @@ public class ServerUtils {
     }
 
     /**
-     * Gets the max amount of players of a server type.
+     * Gets the max number of players from a server type.
      * @param serverType {@link ServerType} - the server type.
-     * @return int - the maximum amount of players on the server.
+     * @return int - the maximum number of players on the server.
      * @since 0.0.1
      */
     public static int getDefaultPortForServerType(ServerType serverType) {
@@ -95,4 +96,7 @@ public class ServerUtils {
         };
     }
 
+    public static boolean needsServerBackup(ServerType serverType) {
+        return serverType == ServerType.LANDSCAPES || serverType == ServerType.FREEBUILD || serverType == ServerType.COCBASE;
+    }
 }

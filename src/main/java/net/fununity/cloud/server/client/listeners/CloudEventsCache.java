@@ -1,4 +1,4 @@
-package net.fununity.cloud.server.listeners.cloud;
+package net.fununity.cloud.server.client.listeners;
 
 import io.netty.channel.ChannelHandlerContext;
 import net.fununity.cloud.common.cache.KeyValueCache;
@@ -6,9 +6,9 @@ import net.fununity.cloud.common.events.EventPriority;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.events.cloud.CloudEventListener;
 import net.fununity.cloud.common.utils.CacheType;
+import net.fununity.cloud.server.client.ClientHandler;
 import net.fununity.cloud.server.misc.CacheHandler;
-import net.fununity.cloud.server.misc.ClientHandler;
-import net.fununity.cloud.server.misc.ServerHandler;
+import net.fununity.cloud.server.server.ServerHandler;
 
 import java.util.UUID;
 

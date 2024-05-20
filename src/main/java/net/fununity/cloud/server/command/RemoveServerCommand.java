@@ -1,8 +1,8 @@
 package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.misc.ServerHandler;
 import net.fununity.cloud.server.server.Server;
+import net.fununity.cloud.server.server.ServerHandler;
 
 /**
  * Command class to remove a server, when crashed.
@@ -17,11 +17,11 @@ public class RemoveServerCommand extends Command {
      * @since 0.0.1
      */
     public RemoveServerCommand() {
-        super("removeserver", "removeserver <serverId>", "Will flush the server from system. Won't stop the server! Should only be used, when server crashed.");
+        super("removeserver", "removeserver <serverId>", "Will flush the server from system. Won't stop the server! Should only be used, when server crashed.", "flush");
     }
 
     /**
-     * Will be called, when the user typed in the command name or aliase.
+     * Will be called when the user typed in the command name or aliase.
      * @param args String[] - The arguments behind the command
      * @since 0.0.1
      */
@@ -33,12 +33,12 @@ public class RemoveServerCommand extends Command {
         }
 
         Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
-        if(server == null) {
+        if (server == null) {
             sendIllegalServerId(args[0]);
             return;
         }
 
-        log.info("Server was flushed!");
-        ServerHandler.getInstance().flushServer(server);
+        log.info("Command successfully!");
+        server.flushServer();
     }
 }

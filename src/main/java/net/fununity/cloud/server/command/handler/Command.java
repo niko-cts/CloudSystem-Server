@@ -1,7 +1,7 @@
 package net.fununity.cloud.server.command.handler;
 
+import net.fununity.cloud.common.utils.CloudLogger;
 import net.fununity.cloud.server.command.CloudConsole;
-import org.apache.log4j.Logger;
 
 /**
  * The abstract Command class for the command system.
@@ -12,7 +12,7 @@ import org.apache.log4j.Logger;
  */
 public abstract class Command {
 
-    protected final Logger log;
+    protected final CloudLogger log;
     private final String name;
     private final String usage;
     private final String description;
@@ -31,11 +31,11 @@ public abstract class Command {
         this.usage = usage;
         this.description = description;
         this.aliases = aliases;
-        this.log = CloudConsole.getInstance().getLogger();
+        this.log = CloudConsole.getLog();
     }
 
     /**
-     * Will be called, when the user typed in the command name or aliase.
+     * Will be called when the user typed in the command name or aliase.
      * @param args String[] - The arguments behind the command
      * @since 0.0.1
      */
@@ -78,7 +78,7 @@ public abstract class Command {
     }
 
     public void sendCommandUsage() {
-        log.info(getUsage() + " - " + getDescription());
+        log.info("%s - %s", getUsage(), getDescription());
     }
 
     public void sendIllegalServerType() {

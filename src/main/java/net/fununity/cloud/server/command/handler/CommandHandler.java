@@ -1,7 +1,7 @@
 package net.fununity.cloud.server.command.handler;
 
+import net.fununity.cloud.common.utils.CloudLogger;
 import net.fununity.cloud.server.command.*;
-import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,7 +10,7 @@ import java.util.List;
 public class CommandHandler {
 
     private final List<Command> commandList;
-    private final Logger log;
+    private final CloudLogger log;
 
     /**
      * Instantiates the class with a Logger.
@@ -18,7 +18,7 @@ public class CommandHandler {
      * @param logger Logger - Logger to output warnings or infos
      * @since 0.0.1
      */
-    public CommandHandler(Logger logger) {
+    public CommandHandler(CloudLogger logger) {
         this.commandList = Arrays.asList(new HelpCommand(), new ServerTypeCommand(), new ListCommand(), new StopCommand(), new BackupCommand(), new DebugCommand(),
                 new RestartCommand(), new InfoCommand(), new StartCommand(), new ExpireCommand(), new ValidateCommand(), new RemoveServerCommand(), new ExitCommand());
         this.log = logger;
@@ -40,8 +40,7 @@ public class CommandHandler {
         }
         try {
             String[] arguments = new String[args.length - 1];
-            for (int i = 1; i < args.length; i++)
-                arguments[i - 1] = args[i];
+            System.arraycopy(args, 1, arguments, 0, args.length - 1);
             command.execute(arguments);
         } catch (Exception exception) {
             log.warn("Exception while executing command " + command.getName() + ": " + exception.getMessage());

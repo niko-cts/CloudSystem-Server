@@ -2,66 +2,55 @@ package net.fununity.cloud.server.server;
 
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.common.utils.DebugLoggerUtil;
-import net.fununity.cloud.server.misc.ClientHandler;
-import net.fununity.cloud.server.misc.ServerHandler;
-import net.fununity.cloud.server.misc.ServerShutdown;
+import net.fununity.cloud.common.utils.CloudLogger;
+import net.fununity.cloud.server.command.DebugCommand;
 import net.fununity.cloud.server.misc.ServerUtils;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Abstract class to define the basic server instance.
  *
- * @author Marco Hajek, Niko
+ * @author Niko
  * @since 0.0.1
  */
 public final class Server {
 
-    private static final String ERROR_COULD_NOT_SET_PROPERTIES = "Could not set properties: ";
-    private static final String ERROR_COULD_NOT_RUN_COMMAND = "Could not execute command: ";
-    private static final String ERROR_SERVER_ALREADY_RUNNING = "Server is already running!";
-    private static final String ERROR_SERVER_IS_NOT_RUNNING = "Server is not running!";
-    private static final String ERROR_FILE_NOT_EXISTS = " does not exists. Can not execute it.";
-    private static final String INFO_COPY_TEMPLATE_FOR = "Copying template for ";
-    private static final String INFO_COPY_BACKUP_FOR = "Copying backup for ";
-    private static final String INFO_SERVER_STARTED = "Server started: ";
-    private static final String INFO_SERVER_STOPPED = "Server stopped: ";
-    private static final String INFO_DELETE_SERVER = "Server deleted: ";
     private static final String FILE_START = "start.sh";
-    private static final String FILE_STOP = "stop.sh";
+    private static final String FILE_STATUS = "serverStatus.sh";
+    private static final String FILE_KILL = "killServer.sh";
+    private static final String FILE_LOG = "logs/latest.log";
+
     private static final String FILE_SERVER_PROPERTIES = "server.properties";
+    private static final CloudLogger LOG = CloudLogger.getLogger(Server.class.getSimpleName());
 
-    static final Logger LOG = Logger.getLogger(Server.class);
-
-    static {
-        LOG.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
-        LOG.setAdditivity(false);
-        LOG.setLevel(Level.INFO);
-    }
 
     private final String serverId;
     private final String serverIp;
     private final int serverPort;
     private final ServerType serverType;
-    private ServerState serverState;
-    String serverPath;
-    private String backupPath;
     private final String serverMaxRam;
     private final String serverMotd;
-    private int maxPlayers;
-    private int playerCount;
+
+    private ServerState serverState;
+
+    final String serverPath;
+    private final String backupPath;
+    private final AtomicInteger maxPlayers;
+    private final AtomicInteger playerCount;
+    private String saveLogfilePrefix;
     private ServerShutdown shutdownProcess;
     private ServerAliveChecker aliveChecker;
+    private ServerStopper serverStopper;
 
     /**
      * Creates a new server instance.
@@ -72,7 +61,6 @@ public final class Server {
      * @param maxRam     String - the Xmx java string.
      * @param motd       String - the motd of the server.
      * @param serverType ServerType - the type of the server.
-     * @author Marco Hajek
      * @see ServerType
      * @since 0.0.1
      */
@@ -84,12 +72,16 @@ public final class Server {
         this.serverState = ServerState.IDLE;
         this.serverMaxRam = maxRam;
         this.serverMotd = motd;
-        this.maxPlayers = maxPlayers;
-        this.playerCount = 0;
+        this.maxPlayers = new AtomicInteger(maxPlayers);
+        this.playerCount = new AtomicInteger(0);
         this.shutdownProcess = null;
-        this.createServerPath();
-        this.createFiles();
-        this.setServerProperties();
+        this.serverPath = new StringBuilder()
+                .append("./Servers/")
+                .append(this.serverType == ServerType.BUNGEECORD ? "BungeeCord/" : "Spigot/")
+                .append(this.serverId).append("/").toString();
+        this.backupPath = new StringBuilder()
+                .append("./Servers/Backups/")
+                .append(this.serverId).append("/").toString();
     }
 
     /**
@@ -104,6 +96,247 @@ public final class Server {
      */
     public Server(String serverId, String serverIp, ServerType serverType) {
         this(serverId, serverIp, ServerHandler.getInstance().getOptimalPort(serverType), ServerUtils.getRamFromType(serverType) + "M", serverId, ServerUtils.getMaxPlayersOfServerType(serverType), serverType);
+    }
+
+    /**
+     * Adds the number of players by one.
+     * Creates a new lobby if the player count of a lobby goes above 20
+     *
+     * @param playerCount int - The number of players on this server
+     * @since 0.0.1
+     */
+    public void setPlayerCount(int playerCount) {
+        this.playerCount.set(playerCount);
+    }
+
+    /**
+     * Creates the server directory and copies the template if it doesn't exist.
+     *
+     * @since 0.0.1
+     */
+    public void createFiles() throws IOException {
+        File serverDirectory = new File(this.serverPath);
+        if (serverDirectory.exists()) {
+            LOG.warn("Server directory for %s already exist. Delete to create a new server...", serverId);
+            FileUtils.deleteDirectory(serverDirectory);
+        }
+
+        String copyPath;
+        if (new File(this.backupPath).exists()) {
+            copyPath = this.backupPath;
+            LOG.debug("Copying backup for %s out of %s", serverId, copyPath);
+        } else {
+            copyPath = ServerUtils.getTemplatePath(this.serverType);
+            LOG.debug("Copying template for %s out of %s", serverId, copyPath);
+        }
+
+        FileUtils.copyDirectory(new File(copyPath), serverDirectory);
+    }
+
+    public void setFileServerProperties() throws IOException {
+        try {
+            if (this.serverType != ServerType.BUNGEECORD) {
+                File file = new File(this.serverPath + FILE_SERVER_PROPERTIES);
+                if (file.createNewFile()) {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                    writer.write("""
+                            server-ip=%s
+                            server-port=%s
+                            motd=%s
+                            max-players=%s
+                            allow-flight=true
+                            online-mode=false
+                            allow-nether=false
+                            """.formatted(this.serverIp, this.serverPort, this.serverMotd, this.maxPlayers));
+                    writer.flush();
+                    writer.close();
+                }
+            }
+        } catch (IOException e) {
+        }
+    }
+
+    /**
+     * Tries to start the server instance.
+     *
+     * @since 0.0.1
+     */
+    public void start() throws IllegalStateException {
+        if (isRunning()) {
+            LOG.warn("Tried to start %s, but is already running!", serverId);
+            ServerHandler.getInstance().checkStartQueue(this);
+            return;
+        }
+
+        File file = new File(this.serverPath + FILE_START);
+        if (!file.exists()) {
+            throw new IllegalStateException(FILE_START + " for server " + serverId + " does not exist: " + file.getPath());
+        }
+
+        try {
+            new ProcessBuilder("sh", file.getPath(), this.serverPath, this.serverId, this.serverMaxRam).start();
+            if (serverType != ServerType.BUNGEECORD)
+                this.aliveChecker = new ServerAliveChecker(this);
+        } catch (IOException e) {
+            throw new IllegalStateException("Could execute stop command for server " + serverId + ": " + e.getMessage());
+        }
+    }
+
+    public boolean isRunning() {
+        File file = new File(this.serverPath + FILE_STATUS);
+        if (!file.exists()) {
+            LOG.error("%s for server %s does not exist!", serverId, FILE_STATUS);
+            return false;
+        }
+        try {
+            int result = new ProcessBuilder("sh", this.serverPath + FILE_STATUS, serverId).start().waitFor();
+            return result == 1;
+        } catch (InterruptedException | IOException exception) {
+            LOG.error("Could not check if server %s is running: %s ", serverId, exception.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Tries to stop a server.
+     *
+     * @since 0.0.1
+     */
+    public void stop() {
+        LOG.debug("Trying to stop server %s", serverId);
+        createStopperIfNotExist().executeState(ServerStopper.ServerStoppingState.REQ_BUNGEECORD_REMOVE);
+    }
+
+    boolean kill() {
+        serverStopped();
+        File file = new File(serverPath + FILE_KILL);
+        if (!file.exists()) {
+            LOG.error("%s for %s does not be exist!", FILE_KILL, serverId);
+            return false;
+        }
+
+        try {
+            LOG.debug("Killing server %s via sh script...", serverId);
+            new ProcessBuilder().command("sh", file.getPath(), serverId).start();
+            return true;
+        } catch (IOException e) {
+            LOG.warn("Could not kill server %s because of: %s", serverId, e.getMessage());
+        }
+        return false;
+    }
+
+    public void clientDisconnected() {
+        this.serverState = ServerState.STOPPED;
+        createStopperIfNotExist().executeState(ServerStopper.ServerStoppingState.RES_CLIENT_DISCONNECTED);
+    }
+
+    public void flushServer() {
+        LOG.info("Flushing server %s... Will save logfile.", serverId);
+        setSaveLogFile("flush");
+        createStopperIfNotExist().flushServer();
+    }
+
+    public void deleteServer() {
+        createStopperIfNotExist().executeState(ServerStopper.ServerStoppingState.EXECUTE_DELETE_AND_CLEANUP);
+    }
+
+    private ServerStopper createStopperIfNotExist() {
+        if (serverStopper == null) {
+            serverStopper = new ServerStopper(this);
+        }
+        return serverStopper;
+    }
+
+    void saveLogFile() {
+        File logFile = new File(this.serverPath + "/" + FILE_LOG);
+        if (!logFile.exists()) {
+            LOG.error("Could not save logfile %s for server %s: Does not exist", FILE_LOG, serverId);
+            return;
+        }
+
+        String filename = String.format("%s-%s.log", getLogFilePrefix(), OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy-HH:mm:ss")));
+
+        try {
+            Path savePath = DebugCommand.DEBUG_OUTPUT.resolve(serverId + "/" + filename);
+            FileUtils.copyFile(logFile, savePath.toFile(), true);
+            LOG.info("Logfile saved for server %s in %s", serverId, savePath);
+        } catch (IOException e) {
+            LOG.error("Could not save log file for server %s: %s", serverId, e.getMessage());
+        }
+    }
+
+    /**
+     * Moves the current server to the backup path.
+     *
+     * @since 0.0.1
+     */
+    public void moveToBackup(boolean copy) throws IOException {
+        File backupFile = new File(this.backupPath);
+        if (!backupFile.exists()) {
+            backupFile.mkdirs();
+        }
+
+        FileUtils.deleteDirectory(backupFile);
+
+        if (copy)
+            FileUtils.copyDirectory(new File(this.serverPath), backupFile, false);
+        else
+            FileUtils.moveDirectory(new File(this.serverPath), backupFile);
+        LOG.debug("Server %s backed up: %s", serverId, this.serverPath);
+    }
+
+    void serverStopped() {
+        this.serverState = ServerState.STOPPED;
+    }
+
+    boolean isStopped() {
+        return this.serverState == ServerState.STOPPED;
+    }
+
+    /**
+     * Sets remove confirmation to true.
+     * Remove confirmation needs to be sent from bungee, so the server can finally be stopped.
+     *
+     * @param shutdownProcess {@link ServerShutdown} - the process instance.
+     * @since 0.0.1
+     */
+    public void setShutdownProcess(ServerShutdown shutdownProcess) {
+        this.shutdownProcess = shutdownProcess;
+    }
+
+    void stopAliveChecker() {
+        if (this.aliveChecker != null)
+            this.aliveChecker.stopTimer();
+    }
+
+    public void receivedClientAliveResponse() {
+        if (this.aliveChecker != null)
+            this.aliveChecker.receivedEvent();
+    }
+
+
+    public ServerState getServerState() {
+        return isRunning() ? ServerState.RUNNING : this.serverState;
+    }
+
+    /**
+     * Sets the max players of the server.
+     *
+     * @param maxPlayers int - max players
+     */
+    public void setMaxPlayers(int maxPlayers) {
+        this.maxPlayers.set(maxPlayers);
+    }
+
+
+    /**
+     * Check if the server has received remove confirmation from bungee.
+     *
+     * @return IServerShutdown - remove confirmation.
+     * @since 0.0.1
+     */
+    public ServerShutdown getShutdownProcess() {
+        return shutdownProcess;
     }
 
     /**
@@ -147,13 +380,13 @@ public final class Server {
     }
 
     /**
-     * Get the amount of maximum players of the server
+     * Get the number of maximum players of the server
      *
-     * @return int - the maximum amount of players of the server
+     * @return int - the maximum number of players of the server
      * @since 0.0.1
      */
     public int getMaxPlayers() {
-        return maxPlayers;
+        return maxPlayers.get();
     }
 
     /**
@@ -178,261 +411,37 @@ public final class Server {
     }
 
     /**
-     * Gets the current state of the server.
+     * Get the number of current players on the server
      *
-     * @return ServerState - the state.
-     * @see ServerState
-     * @since 0.0.1
-     */
-    public ServerState getServerState() {
-        return this.serverState;
-    }
-
-    /**
-     * Sets the state of the server.
-     *
-     * @param state ServerState - the state.
-     * @see ServerState
-     * @since 0.0.1
-     */
-    public void setServerState(ServerState state) {
-        this.serverState = state;
-    }
-
-    /**
-     * Get the amount of current players on the server
-     *
-     * @return int - Amount of players
+     * @return int - Number of players
      * @since 0.0.1
      */
     public int getPlayerCount() {
-        return playerCount;
+        return playerCount.get();
     }
 
-    /**
-     * Adds the amount of players by one.
-     * Creates new lobby if player count of lobby goes above 20
-     *
-     * @param playerCount int - The amount of players on this server
-     * @since 0.0.1
-     */
-    public void setPlayerCount(int playerCount) {
-        this.playerCount = playerCount;
-        if (serverType == ServerType.LOBBY && playerCount == 0 && !serverId.equals("Lobby01") &&
-                ServerHandler.getInstance().getPlayerCountOfNetwork() + getMaxPlayers() < ServerHandler.getInstance().getLobbyServers().stream()
-                        .mapToInt(Server::getMaxPlayers).sum()) {
-            ServerHandler.getInstance().shutdownServer(this);
-        }
+    public void setSaveLogFile(String saveLogfilePrefix) {
+        this.saveLogfilePrefix = saveLogfilePrefix;
     }
 
-    /**
-     * Creates the path of the server.
-     *
-     * @since 0.0.1
-     */
-    private void createServerPath() {
-        this.serverPath = new StringBuilder()
-                .append("./Servers/")
-                .append(this.serverType == ServerType.BUNGEECORD ? "BungeeCord/" : "Spigot/")
-                .append(this.serverId).append("/").toString();
-        this.backupPath = new StringBuilder()
-                .append("./Servers/Backups/")
-                .append(this.serverId).append("/").toString();
+    public String getLogFilePrefix() {
+        return saveLogfilePrefix;
     }
 
-    /**
-     * Creates the server directory and copies the template if it doesn't exist.
-     *
-     * @since 0.0.1
-     */
-    private void createFiles() {
-        try {
-            File serverDirectory = new File(this.serverPath);
-            if (serverDirectory.exists()) {
-                FileUtils.deleteDirectory(serverDirectory);
-            }
-
-            String copyPath;
-            if (new File(this.backupPath).exists()) {
-                copyPath = this.backupPath;
-                DebugLoggerUtil.getInstance().info(INFO_COPY_BACKUP_FOR + this.serverId);
-                LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
-            } else {
-                copyPath = ServerUtils.getTemplatePath(this.serverType);
-                DebugLoggerUtil.getInstance().info(INFO_COPY_TEMPLATE_FOR + this.serverId);
-                LOG.info(INFO_COPY_TEMPLATE_FOR + this.serverId);
-            }
-
-            FileUtils.copyDirectory(new File(copyPath), serverDirectory);
-        } catch (IOException exception) {
-            ServerHandler.getInstance().flushServer(this);
-        }
-    }
-
-
-    private void setServerProperties() {
-        try {
-            if (this.serverType != ServerType.BUNGEECORD) {
-                File file = new File(this.serverPath + FILE_SERVER_PROPERTIES);
-                if (file.createNewFile()) {
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    writer.write("server-ip=" + this.serverIp + "\n");
-                    writer.write("server-port=" + this.serverPort + "\n");
-                    writer.write("motd=" + this.serverMotd + "\n");
-                    writer.write("max-players=" + this.maxPlayers + "\n");
-                    writer.write("allow-flight=true\n");
-                    writer.write("online-mode=false\n");
-                    writer.write("allow-nether=false\n");
-                    writer.flush();
-                    writer.close();
-                }
-            }
-        } catch (IOException e) {
-            LOG.warn(ERROR_COULD_NOT_SET_PROPERTIES + e.getMessage());
-        }
-    }
-
-    /**
-     * Tries to start the server instance.
-     *
-     * @since 0.0.1
-     */
-    public void start() {
-        if (this.serverState == ServerState.RUNNING) {
-            LOG.warn(ERROR_SERVER_ALREADY_RUNNING);
-            ServerHandler.getInstance().flushServer(this);
-            return;
-        }
-
-        File file = new File(this.serverPath + FILE_START);
-        if (!file.exists()) {
-            DebugLoggerUtil.getInstance().warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
-            LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
-            ServerHandler.getInstance().flushServer(this);
-            return;
-        }
-
-        try {
-            Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverPath + " " + this.serverId + " " + this.serverMaxRam);
-            this.serverState = ServerState.RUNNING;
-
-            if (serverType != ServerType.BUNGEECORD)
-                this.aliveChecker = new ServerAliveChecker(this);
-
-            LOG.info(INFO_SERVER_STARTED + this.serverId);
-            DebugLoggerUtil.getInstance().info(INFO_SERVER_STARTED + this.serverId);
-        } catch (IOException e) {
-            LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
-            DebugLoggerUtil.getInstance().warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
-            ServerHandler.getInstance().flushServer(this);
-        }
-    }
-
-
-    /**
-     * Tries to stop a server.
-     *
-     * @since 0.0.1
-     */
-    public void stop() {
-        if (this.serverState != ServerState.RUNNING) {
-            LOG.warn(ERROR_SERVER_IS_NOT_RUNNING);
-            DebugLoggerUtil.getInstance().warn(ERROR_SERVER_IS_NOT_RUNNING);
-            ServerHandler.getInstance().flushServer(this);
-            return;
-        }
-
-        this.serverState = ServerState.STOPPED;
-
-        File file = new File(this.serverPath + FILE_STOP);
-        if (!file.exists()) {
-            LOG.warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
-            DebugLoggerUtil.getInstance().warn(file.getPath() + ERROR_FILE_NOT_EXISTS);
-            ServerHandler.getInstance().flushServer(this);
-            return;
-        }
-
-        try {
-            ClientHandler.getInstance().sendDisconnect(getServerId());
-            Runtime.getRuntime().exec("sh " + file.getPath() + " " + this.serverId);
-            LOG.info(INFO_SERVER_STOPPED + this.serverId);
-            DebugLoggerUtil.getInstance().info(INFO_SERVER_STOPPED + this.serverId);
-
-            new ServerDeleter(this);
-        } catch (IOException e) {
-            LOG.warn(ERROR_COULD_NOT_RUN_COMMAND + e.getMessage());
-            ServerHandler.getInstance().flushServer(this);
-        }
-    }
-
-    /**
-     * Moves the current server to the backup path.
-     *
-     * @since 0.0.1
-     */
-    public void moveToBackup(boolean copy) throws IOException {
-        File backupFile = new File(this.backupPath);
-        if (!backupFile.exists()) {
-            backupFile.mkdirs();
-        }
-
-        LOG.info(INFO_COPY_BACKUP_FOR + this.serverId);
-        FileUtils.deleteDirectory(backupFile);
-
-        if (copy)
-            FileUtils.copyDirectory(new File(this.serverPath), backupFile, false);
-        else
-            FileUtils.moveDirectory(new File(this.serverPath), backupFile);
-    }
-
-    /**
-     * Deletes the whole instance directory.
-     * @since 1.0.0
-     */
-    public void deleteContent() {
-        LOG.info(INFO_DELETE_SERVER + this.serverPath);
-        FileUtils.deleteQuietly(new File(this.serverPath));
-    }
-
-    /**
-     * Sets the max players of the server.
-     *
-     * @param maxPlayers int - max players
-     */
-    public void setMaxPlayers(int maxPlayers) {
-        this.maxPlayers = maxPlayers;
-    }
-
-
-    /**
-     * Check if server has received remove confirmation from bungee.
-     *
-     * @return IServerShutdown - remove confirmation.
-     * @since 0.0.1
-     */
-    public ServerShutdown getShutdownProcess() {
-        return shutdownProcess;
-    }
-
-    /**
-     * Sets remove confirmation to true.
-     * Remove confirmation needs to be sent from bungee, so the server can finally be stopped.
-     *
-     * @param shutdownProcess {@link ServerShutdown} - the process instance.
-     * @since 0.0.1
-     */
-    public void setShutdownProcess(ServerShutdown shutdownProcess) {
-        this.shutdownProcess = shutdownProcess;
-    }
-
-    public void stopAliveChecker() {
-        if (this.aliveChecker != null)
-            this.aliveChecker.stopTimer();
-    }
-
-    public void receivedClientAliveResponse() {
-        if (this.aliveChecker != null)
-            this.aliveChecker.receivedEvent();
+    @Override
+    public String toString() {
+        return "Server{" +
+               "serverId='" + serverId + '\'' +
+               ", serverPort=" + serverPort +
+               ", serverType=" + serverType +
+               ", serverState=" + serverState +
+               ", serverPath='" + serverPath + '\'' +
+               ", playerCount=" + playerCount +
+               ", maxPlayers=" + maxPlayers +
+               ", shutdownProcess=" + (shutdownProcess != null) +
+               ", aliveChecker=" + (aliveChecker != null) +
+               ", serverStopper=" + (serverStopper != null) +
+               '}';
     }
 
     @Override
@@ -447,6 +456,5 @@ public final class Server {
     public int hashCode() {
         return Objects.hash(serverId, serverIp, serverPort, serverType, serverPath, serverMaxRam);
     }
-
 
 }

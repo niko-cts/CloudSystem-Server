@@ -14,13 +14,13 @@ public class ExitCommand extends Command {
     }
 
     /**
-     * Will be called, when the user typed in the command name or aliase.
+     * Will be called when the user typed in the command name or aliase.
      * @param args String[] - The arguments behind the command
      * @since 0.0.1
      */
     @Override
     public void execute(String[] args) {
-        log.info("Exit cloud.");
+        log.info("Shutdown CloudServer...");
         CloudServer.getInstance().shutdownEverything();
     }
 }

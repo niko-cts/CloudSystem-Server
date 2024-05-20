@@ -3,7 +3,7 @@ package net.fununity.cloud.server.command;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
 import net.fununity.cloud.server.misc.ConfigHandler;
-import net.fununity.cloud.server.misc.ServerHandler;
+import net.fununity.cloud.server.server.ServerHandler;
 
 public class StartCommand extends Command {
 
@@ -16,7 +16,7 @@ public class StartCommand extends Command {
     }
 
     /**
-     * Will be called, when the user typed in the command name or aliase.
+     * Will be called when the user typed in the command name or aliase.
      * @param args String[] - The arguments behind the command
      * @since 0.0.1
      */
@@ -42,7 +42,6 @@ public class StartCommand extends Command {
             sendIllegalServerType();
             return;
         }
-        log.info("Starting server with server type " + args[0]);
         int amount = 1;
         if (args.length == 2) {
             try {
@@ -51,6 +50,8 @@ public class StartCommand extends Command {
                 sendCommandUsage();
             }
         }
+
+        log.info("Starting %s server with type %s", amount, args[0]);
         for (int i = 0; i < amount; i++)
             ServerHandler.getInstance().createServerByServerType(serverType);
     }

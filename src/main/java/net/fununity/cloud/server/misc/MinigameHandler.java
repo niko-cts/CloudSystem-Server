@@ -3,14 +3,13 @@ package net.fununity.cloud.server.misc;
 import net.fununity.cloud.common.events.EventPriority;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.server.CloudServer;
+import net.fununity.cloud.common.utils.CloudLogger;
+import net.fununity.cloud.server.client.listeners.CloudEvents;
 import net.fununity.cloud.server.server.Server;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
+import net.fununity.cloud.server.server.ServerHandler;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Handler class for minigame lobby mechanics
@@ -19,7 +18,7 @@ import java.util.*;
  */
 public class MinigameHandler {
 
-    public static final Logger LOG = Logger.getLogger(MinigameHandler.class.getSimpleName());
+    public static final CloudLogger LOG = CloudLogger.getLogger(MinigameHandler.class.getSimpleName());
     private static MinigameHandler instance;
 
     /**
@@ -41,10 +40,6 @@ public class MinigameHandler {
      */
     private MinigameHandler() {
         instance = this;
-        PatternLayout layout = new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n");
-        LOG.addAppender(new ConsoleAppender(layout));
-        LOG.setLevel(Level.INFO);
-        LOG.setAdditivity(false);
         this.minigameLobbies = new EnumMap<>(ServerType.class);
         this.startingServer = 0;
     }
@@ -63,7 +58,7 @@ public class MinigameHandler {
                 minigameLobbies.remove(server.getServerType());
             else
                 minigameLobbies.put(server.getServerType(), servers);
-            CloudServer.getLogger().info("Removing minigame lobby: " + server.getServerId());
+            LOG.info("Removing minigame lobby: " + server.getServerId());
             if (check) {
                 checkToAdd(servers.size(), server.getServerType());
             }
@@ -104,13 +99,13 @@ public class MinigameHandler {
     /**
      * Called when a Minigame sent STATUS_MINIGAME event.
      * Will check if a new lobby registered
-     * @see net.fununity.cloud.server.listeners.cloud.CloudEvents
+     * @see CloudEvents
      * @param event CloudEvent - Event that was sent
      */
     public void receivedStatusUpdate(CloudEvent event) {
         Server server = ServerHandler.getInstance().getServerByIdentifier(event.getData().get(0).toString());
         if (server == null) {
-            CloudServer.getLogger().warn("STATUS_MINIGAME Event was sent with unknown id: " + event.getData().get(0));
+            LOG.error("STATUS_MINIGAME Event was sent with unknown id: " + event.getData().get(0));
             return;
         }
 
@@ -121,8 +116,7 @@ public class MinigameHandler {
         else
             removeLobby(server, server.getShutdownProcess() == null || server.getShutdownProcess().needsMinigameCheck());
 
-        int maxPlayers = Integer.parseInt(event.getData().get(5).toString());
-        server.setMaxPlayers(maxPlayers);
+        server.setMaxPlayers(Integer.parseInt(event.getData().get(5).toString()));
     }
 
     /**
@@ -155,12 +149,7 @@ public class MinigameHandler {
      * @since 0.0.1
      */
     public Set<String> getLobbyServers() {
-        Set<String> serverId = new HashSet<>();
-        for (Map.Entry<ServerType, Set<Server>> entry : minigameLobbies.entrySet()) {
-            for (Server server : entry.getValue()) {
-                serverId.add(server.getServerId());
-            }
-        }
-        return serverId;
+        return new HashMap<>(minigameLobbies).entrySet().stream()
+                .flatMap(servers -> servers.getValue().stream().map(Server::getServerId)).collect(Collectors.toSet());
     }
 }

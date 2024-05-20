@@ -2,7 +2,7 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.misc.ServerHandler;
+import net.fununity.cloud.server.server.ServerHandler;
 
 public class ExpireCommand extends Command {
 

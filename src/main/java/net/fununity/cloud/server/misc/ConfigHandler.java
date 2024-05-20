@@ -1,42 +1,25 @@
 package net.fununity.cloud.server.misc;
 
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.server.CloudServer;
-import net.fununity.cloud.server.server.Server;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
+import net.fununity.cloud.common.utils.CloudLogger;
+import net.fununity.cloud.server.server.ServerHandler;
 
-import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
  * Singleton class for handling the cloud configuration.
  * Used to store/retrieve default servers.
  *
- * @author Marco Hajek, Niko
+ * @author Niko
  * @since 0.0.1
  */
 public class ConfigHandler {
 
+    private static final CloudLogger LOG = CloudLogger.getLogger(ConfigHandler.class.getSimpleName());
     private static ConfigHandler instance;
 
     /**
@@ -56,20 +39,17 @@ public class ConfigHandler {
         instance = new ConfigHandler(args);
     }
 
-    private File configFile;
-    private final Logger logger = Logger.getLogger(ConfigHandler.class);
+    private Path configPath;
 
     private ConfigHandler(String... args) {
-        logger.addAppender(new ConsoleAppender(new PatternLayout("[%d{HH:mm:ss}] %c{1} [%p]: %m%n")));
-        logger.setAdditivity(false);
-        logger.setLevel(Level.INFO);
+        LOG.debug("Boot up ConfigHandler...");
         try {
-            this.configFile = new File("config.xml");
-            if (!this.configFile.exists()) {
-                boolean newFile = this.configFile.createNewFile();
-                if (newFile)
-                    this.loadDefaultConfiguration();
-            }
+            File configFile = new File("config.txt");
+            if (!configFile.exists() && configFile.createNewFile())
+                this.loadDefaultConfiguration(configFile.toPath());
+
+            this.configPath = configFile.toPath();
+
             if (args.length == 0 || args[0].equalsIgnoreCase("default"))
                 this.loadDefaultServers();
             else if (!args[0].equalsIgnoreCase("nodefaults")) {
@@ -77,12 +57,12 @@ public class ConfigHandler {
                     try {
                         ServerHandler.getInstance().createServerByServerType(ServerType.valueOf(arg));
                     } catch (IllegalArgumentException exception) {
-                        logger.warn("Could not start server: " + arg);
+                        LOG.error("Could not start server, illegal : " + arg);
                     }
                 }
             }
         } catch (IOException e) {
-            logger.warn(e.getMessage());
+            LOG.warn(e.getMessage());
         }
     }
 
@@ -92,59 +72,15 @@ public class ConfigHandler {
      *
      * @since 0.0.1
      */
-    private void loadDefaultConfiguration() {
+    private void loadDefaultConfiguration(Path path) {
         try {
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            dbFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            dbFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.newDocument();
-
-            Element rootElem = doc.createElement("cloudserver");
-            doc.appendChild(rootElem);
-
-            Element defaultServers = doc.createElement("defaultservers");
-            rootElem.appendChild(defaultServers);
-
-            defaultServers.appendChild(this.createServer(doc, "Main01", "127.0.0.1", "BungeeCord"));
-            defaultServers.appendChild(this.createServer(doc, "Lobby01", "127.0.0.1", "Lobby"));
-
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            transformerFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
-            Transformer transformer = transformerFactory.newTransformer();
-            DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(this.configFile);
-            transformer.transform(source, result);
-        } catch (ParserConfigurationException | TransformerException e) {
-            logger.warn(e.getMessage());
+            Files.write(path, """
+                    BUNGEECORD
+                    LOBBY
+                    """.getBytes());
+        } catch (IOException exception) {
+            LOG.error("Could not save default config: " + exception.getMessage());
         }
-    }
-
-    /**
-     * Creates a server element for the config.
-     *
-     * @param doc  Document - the xml document.
-     * @param id   String - the server id.
-     * @param ip   String - the server ip.
-     * @param type String - the type of the server.
-     * @return Element - the xml version of this server.
-     * @since 0.0.1
-     */
-    private Element createServer(Document doc, String id, String ip, String type) {
-        Element server = doc.createElement("server");
-        Element elementId = doc.createElement("id");
-        Element elementIp = doc.createElement("ip");
-        Element elementType = doc.createElement("type");
-
-        elementId.setTextContent(id);
-        elementIp.setTextContent(ip);
-        elementType.setTextContent(type);
-
-        server.appendChild(elementId);
-        server.appendChild(elementIp);
-        server.appendChild(elementType);
-        return server;
     }
 
     /**
@@ -153,39 +89,30 @@ public class ConfigHandler {
      * @since 0.0.1
      */
     public void loadDefaultServers() {
+        LOG.info("Starting default servers...");
+        StringBuilder builder = new StringBuilder();
         try {
-            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-            dbFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            dbFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-            DocumentBuilder docBuilder = dbFactory.newDocumentBuilder();
-            Document doc = docBuilder.parse(this.configFile);
+            List<String> servers = Files.readAllLines(configPath);
 
-            Element root = doc.getDocumentElement();
-            NodeList defaultServers = root.getElementsByTagName("defaultservers").item(0).getChildNodes();
+            for (String server : servers) {
+                String[] serverAmount = server.split(" ");
+                try {
+                    ServerType serverType = ServerType.valueOf(serverAmount[0]);
+                    int amount = serverAmount.length > 1 ? Integer.parseInt(serverAmount[1]) : 1;
+                    for (int i = 0; i < amount; i++)
+                        ServerHandler.getInstance().createServerByServerType(serverType);
 
-            List<Server> servers = new ArrayList<>();
-
-            for (int i = 0; i < defaultServers.getLength(); i++) {
-                Node server = defaultServers.item(i);
-                NodeList children = server.getChildNodes();
-                String id = children.item(0).getTextContent();
-                String ip = children.item(1).getTextContent();
-                String type = children.item(2).getTextContent();
-                ServerType serverType = Arrays.stream(ServerType.values()).filter(s -> s.name().equalsIgnoreCase(type)).findFirst().orElse(null);
-                if (serverType != null) {
-                    servers.add(new Server(id, ip,
-                            ServerHandler.getInstance().getNextFreeServerPort(ServerUtils.getDefaultPortForServerType(serverType), servers),
-                            ServerUtils.getRamFromType(serverType) + "M",
-                            id,
-                            ServerUtils.getMaxPlayersOfServerType(serverType),
-                            serverType));
-                } else {
-                    CloudServer.getLogger().log(Level.WARN, "Illegal ServerType " + type + " in default config given");
+                    builder.append(serverType).append(": ").append(amount).append(", ");
+                } catch (NumberFormatException exception) {
+                    LOG.error("Illegal number given %s in default config for servertype %s: %s", serverAmount[1], serverAmount[0], exception.getMessage());
+                } catch (IllegalArgumentException exception) {
+                    LOG.error("Illegal ServerType %s in default config given: %s", serverAmount[0], exception.getMessage());
                 }
             }
-            servers.forEach(s -> ServerHandler.getInstance().addServer(s));
-        } catch (ParserConfigurationException | SAXException | IOException e) {
-            logger.warn(e.getMessage());
+        } catch (IOException exception) {
+            LOG.error("Could not load config: " + exception.getMessage());
+            return;
         }
+        LOG.info("Server started: " + builder);
     }
 }
