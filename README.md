@@ -2,6 +2,7 @@ CloudSystem Server for Minecraft
 
 ⚠️ Important: This project is intended solely for demonstration and presentation purposes. It is not designed for actual gameplay or production use. ⚠️
 
+This project is the server sided part of the cloudsystem. For presentation purposes only this is the only one published. 
 
 Features
 
