@@ -1,13 +1,13 @@
 package net.fununity.cloud.server.server;
 
+import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerDefinition;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.common.utils.CloudLogger;
 import net.fununity.cloud.server.CloudServer;
-import net.fununity.cloud.server.client.ClientHandler;
 import net.fununity.cloud.server.misc.MinigameHandler;
-import net.fununity.cloud.server.misc.ServerUtils;
+import net.fununity.cloud.server.netty.ClientHandler;
+import net.fununity.cloud.server.server.shutdown.ServerShutdown;
 
 import java.io.IOException;
 import java.net.DatagramSocket;
@@ -25,10 +25,9 @@ import java.util.stream.Collectors;
  * @author Niko
  * @since 0.0.1
  */
+@Slf4j
 public class ServerHandler {
 
-    private static final List<Integer> BLACKLISTED_PORTS = Arrays.asList(30004, 30011, 31001, 31002, 31003, 31004, 31005, 31006, 31007, 31008, 31009, 32002, 32003);
-    public static final CloudLogger LOG = CloudLogger.getLogger(ServerHandler.class.getSimpleName());
     public static final int MAX_RAM = 35200;
     private static ServerHandler instance;
 
@@ -118,7 +117,7 @@ public class ServerHandler {
         return getServers().stream().filter(s -> s.getServerPort() == port)
                 .findFirst().map(Server::getServerId)
                 .orElseGet(() -> {
-                    LOG.warn("Port %s was not found in the server list, but was requested! All Servers: %s", port,
+                    log.warn("Port {} was not found in the server list, but was requested! All Servers: {}", port,
                             getServers().stream().map(s -> s.getServerId() + ":" + s.getServerPort()).collect(Collectors.joining(", ")));
                     return null;
                 });
@@ -128,12 +127,11 @@ public class ServerHandler {
     /**
      * Get the best free port for the given server type.
      *
-     * @param serverType {@link ServerType} - the server type.
      * @return int - the next free port.
      * @since 1.0
      */
-    public int getOptimalPort(ServerType serverType) {
-        return getNextFreeServerPort(ServerUtils.getDefaultPortForServerType(serverType), getAllServers());
+    public int getNextFreeServerPort() {
+        return getNextFreeServerPort(25565);
     }
 
     /**
@@ -143,8 +141,8 @@ public class ServerHandler {
      * @return int - the highest port.
      * @since 0.0.1
      */
-    public int getNextFreeServerPort(int port, List<Server> servers) {
-        if (servers.stream().noneMatch(s -> s.getServerPort() == port) && !BLACKLISTED_PORTS.contains(port)) {
+    private int getNextFreeServerPort(int port) {
+        if (getAllServers().stream().noneMatch(s -> s.getServerPort() == port)) {
             ServerSocket ss = null;
             DatagramSocket ds = null;
             try {
@@ -168,7 +166,7 @@ public class ServerHandler {
             }
         }
 
-        return getNextFreeServerPort(port + 1, servers);
+        return getNextFreeServerPort(port + 1);
     }
 
 
@@ -179,11 +177,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public int getCurrentRamUsed() {
-        int ram = 0;
-        for (Server server : getServers()) {
-            ram += Integer.parseInt(server.getServerMaxRam().replaceAll("[^\\d.]", ""));
-        }
-        return ram;
+        return getAllServers().stream().mapToInt(server -> server.getConfig().getRam()).sum();
     }
 
     /**
@@ -215,7 +209,7 @@ public class ServerHandler {
      */
     public void shutdownServer(Server server, ServerShutdown serverShutdown) {
         if (server != null) {
-            LOG.debug("Init shutdown server '%s'", server.getServerId());
+            log.debug("Init shutdown server '{}'", server.getServerId());
             this.stopQueue.add(server);
             server.setShutdownProcess(serverShutdown);
             server.stop();
@@ -229,7 +223,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void restartServer(Server server) {
-        LOG.info("Try to restart server: %s", server.getServerId());
+        log.info("Try to restart server: {}", server.getServerId());
         shutdownServer(server, () -> createServerByServerType(server.getServerType()));
     }
 
@@ -240,7 +234,7 @@ public class ServerHandler {
      * @since 0.0.1
      */
     public void restartAllServersOfType(ServerType serverType) {
-        LOG.info("Try to restart all servers of type %s", serverType);
+        log.info("Try to restart all servers of type {}", serverType);
         getActiveServersByType(serverType).forEach(this::restartServer);
     }
 
@@ -267,7 +261,7 @@ public class ServerHandler {
      */
     public void createServerByServerType(ServerType serverType) {
         if (expireServers.contains(serverType)) {
-            LOG.warn(serverType + " was tried to start, but is in expire mode!");
+            log.warn(serverType + " was tried to start, but is in expire mode!");
             return;
         }
 
@@ -288,7 +282,7 @@ public class ServerHandler {
         else
             serverId += nextNumber;
 
-        LOG.debug("Create new server '%s' by type '%s'", serverId, serverType.name());
+        log.debug("Create new server '{}' by type '{}'", serverId, serverType.name());
         addServer(new Server(serverId, "127.0.0.1", serverType));
     }
 
@@ -306,7 +300,7 @@ public class ServerHandler {
             startServer(startQueue.peek());
 
         for (Server server : getActiveServersByType(type)) {
-            server.setSaveLogFile(logfilePrefix);
+            server.setSavelogFile(logfilePrefix);
             shutdownServer(server, () -> {});
         }
     }
@@ -317,15 +311,15 @@ public class ServerHandler {
      *
      * @since 0.0.1
      */
-    public void shutdownAllServers(String saveLogFile) {
+    public void shutdownAllServers(String savelogFile) {
         ServerShutdown serverShutdown = () -> {
             if (getServers().size() == getBungeeServers().size())
-                shutdownAllServersOfType(ServerType.BUNGEECORD, saveLogFile);
+                shutdownAllServersOfType(ServerType.BUNGEECORD, savelogFile);
         };
         this.startQueue.clear();
         for (Server server : getServers()) {
             if (server.getServerType() != ServerType.BUNGEECORD) {
-                server.setSaveLogFile(saveLogFile);
+                server.setSavelogFile(savelogFile);
                 shutdownServer(server, serverShutdown);
             }
         }
@@ -341,7 +335,7 @@ public class ServerHandler {
         getServers().stream().filter(s -> s.getServerType() != ServerType.BUNGEECORD).findFirst()
                 .ifPresent(s -> shutdownServer(s, () -> CloudServer.getInstance().shutdownEverything()));
         if (getServers().stream().noneMatch(s -> s.getServerType() != ServerType.BUNGEECORD)) {
-            LOG.debug("Only BungeeCordServers open, disconnecting those...");
+            log.debug("Only BungeeCordServers open, disconnecting those...");
             getBungeeServers().stream().findFirst()
                     .ifPresent(b -> shutdownServer(b, () -> CloudServer.getInstance().shutdownEverything()));
         }
@@ -389,7 +383,7 @@ public class ServerHandler {
         Server lobby = getSuitableLobby(blackListLobbies.toArray(new Server[0]));
 
         if (lobby == null) {
-            LOG.warn("No suitable lobby to send player!");
+            log.warn("No suitable lobby to send player!");
             return;
         }
 
@@ -441,7 +435,7 @@ public class ServerHandler {
         if (this.startQueue.contains(server)) {
             boolean top = this.startQueue.peek().getServerId().equals(server.getServerId());
             this.startQueue.remove(server);
-            LOG.debug("Server %s was removed from start queue", server.getServerId());
+            log.debug("Server {} was removed from start queue", server.getServerId());
             if (!this.startQueue.isEmpty() && top) {
                 startServer(this.startQueue.peek());
             }
@@ -449,22 +443,22 @@ public class ServerHandler {
     }
 
     public void startServer(Server server) {
-        LOG.debug("Try to start server " + server.getServerId());
+        log.debug("Try to start server " + server.getServerId());
         try {
-            LOG.debug("Creating server files for %s...", server.getServerId());
+            log.debug("Creating server files for {}...", server.getServerId());
             server.createFiles();
         } catch (IOException exception) {
-            LOG.error("Server directory for %s could not be created: %s", server.getServerId(), exception.getMessage());
+            log.error("Server directory for {} could not be created: {}", server.getServerId(), exception.getMessage());
             removeServer(server);
             checkStartQueue(server);
             return;
         }
 
         try {
-            LOG.debug("Setting server properties for %s...", server.getServerId());
+            log.debug("Setting server properties for {}...", server.getServerId());
             server.setFileServerProperties();
         } catch (IOException e) {
-            LOG.error("Could not set properties for server %s: %s", server.getServerId(), e.getMessage());
+            log.error("Could not set properties for server {}: {}", server.getServerId(), e.getMessage());
             server.deleteServer();
             checkStartQueue(server);
             return;
@@ -472,9 +466,9 @@ public class ServerHandler {
 
         try {
             server.start();
-            LOG.info("Server %s started.", server.getServerId());
+            log.info("Server {} started.", server.getServerId());
         } catch (IllegalStateException exception) {
-            LOG.error("Could not start server %s: %s", server.getServerId(), exception.getMessage());
+            log.error("Could not start server {}: {}", server.getServerId(), exception.getMessage());
             server.deleteServer();
             checkStartQueue(server);
         }

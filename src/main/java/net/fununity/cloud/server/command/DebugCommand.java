@@ -1,6 +1,6 @@
 package net.fununity.cloud.server.command;
 
-import net.fununity.cloud.common.utils.CloudLogger;
+import net.fununity.cloud.common.utils.Logger;
 import net.fununity.cloud.server.command.handler.Command;
 import org.apache.log4j.Level;
 
@@ -39,7 +39,7 @@ public class DebugCommand extends Command {
         switch (args[0].toLowerCase()) {
             case "save" -> {
                 try {
-                    CloudLogger.saveLogs(DEBUG_OUTPUT
+                    Logger.saveLogs(DEBUG_OUTPUT
                             .resolve("CloudServer/" + OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy-HH:mm:ss"))
                                      + ".txt").toAbsolutePath());
                     log.info("Debug file was saved.");
@@ -48,7 +48,7 @@ public class DebugCommand extends Command {
                 }
             }
             case "info", "debug" -> {
-                CloudLogger.setLoggingLevel(Level.toLevel(args[0].toUpperCase()));
+                Logger.setLoggingLevel(Level.toLevel(args[0].toUpperCase()));
                 log.info("Log-Level was changed to " + args[0]);
                 log.debug("Log-Level was changed to " + args[0]);
             }

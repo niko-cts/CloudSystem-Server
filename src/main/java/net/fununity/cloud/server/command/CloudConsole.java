@@ -1,6 +1,7 @@
 package net.fununity.cloud.server.command;
 
-import net.fununity.cloud.common.utils.CloudLogger;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.command.handler.CommandHandler;
 import org.jline.reader.EndOfFileException;
@@ -11,6 +12,7 @@ import org.jline.reader.impl.DefaultParser;
 import org.jline.reader.impl.completer.NullCompleter;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 
@@ -20,25 +22,12 @@ import java.io.IOException;
  * @author Niko
  * @since 0.0.1
  */
-public class CloudConsole {
-
-    private static final CloudLogger LOG = CloudLogger.getLogger(CloudConsole.class.getSimpleName());
-    private static CloudConsole instance;
-
-    /**
-     * Get a singleton instance of this class
-     *
-     * @return {@link CloudConsole} - Instance of this class
-     * @since 0.0.1
-     */
-    public static CloudConsole getInstance() {
-        if (instance == null)
-            instance = new CloudConsole();
-        return instance;
-    }
+@Slf4j
+public class CloudConsole implements Runnable {
 
     private Terminal terminal;
-    private final CommandHandler commandHandler;
+	@Getter
+	private final CommandHandler commandHandler;
     private boolean exit;
 
     /**
@@ -49,16 +38,15 @@ public class CloudConsole {
      * @since 0.0.1
      */
     public CloudConsole() {
-        instance = this;
-        this.commandHandler = new CommandHandler(LOG);
+        this.commandHandler = new CommandHandler(log);
         this.terminal = null;
         this.exit = false;
-        startTerminal();
     }
 
-    private void startTerminal() {
+    public void run() {
         try {
-            terminal = TerminalBuilder.builder()
+            log.debug("Starting cloud console...");
+            this.terminal = TerminalBuilder.builder()
                     .system(true)
                     .build();
             LineReader lineReader = LineReaderBuilder.builder()
@@ -74,17 +62,16 @@ public class CloudConsole {
                         CloudServer.getInstance().shutdownEverything();
                         return; // User pressed Ctrl+D or Ctrl+C
                     }
-
                     this.commandHandler.tryToExecuteCommand(line.split(" "));
                 } catch (UserInterruptException | EndOfFileException ignore) {
                 } catch (Exception exception) {
-                    LOG.warn("Console through exception: " + exception.getMessage());
+                    log.warn("Console through exception:", exception);
                 }
             }
 
             terminal.close();
         } catch (IOException e) {
-            LOG.error("Caught exception in terminal " + e.getMessage());
+            log.error("Caught exception in terminal: ", e);
         }
     }
 
@@ -99,28 +86,12 @@ public class CloudConsole {
             try {
                 terminal.close();
             } catch (IOException e) {
-                LOG.error("Could not close terminal: " + e.getMessage());
+	            log.error("Could not close terminal:", e);
             }
         }
     }
 
-    /**
-     * Returns the CloudConsole Logger.
-     *
-     * @return Logger - Logger of Console
-     * @since 0.0.1
-     */
-    public static CloudLogger getLog() {
-        return LOG;
-    }
-
-    /**
-     * Returns the instance of the {@link CommandHandler}
-     *
-     * @return {@link CommandHandler} - Instance of the commandHandler.
-     * @since 0.0.1
-     */
-    public CommandHandler getCommandHandler() {
-        return this.commandHandler;
+    public static Logger getLogger() {
+        return log;
     }
 }

@@ -33,8 +33,8 @@ public class ValidateCommand extends Command {
         }
         try {
             ServerType serverType = ServerType.valueOf(args[0]);
-            ServerHandler.getInstance().validate(serverType);
-            log.info("Expire-Mode disabled on " + serverType);
+            manager.getExpireServers().remove(serverType);
+	        log.info("Expire-Mode disabled on {}", serverType);
         } catch (IllegalArgumentException exception) {
             sendIllegalServerType();
         }

@@ -38,8 +38,8 @@ public class ListCommand extends Command {
         } else
             servers.sort(Comparator.comparingInt(value -> value.getServerType().ordinal()));
 
-        log.info("Players on network: %s", ServerHandler.getInstance().getPlayerCountOfNetwork());
-        log.info("%s server(s) active:", servers.size());
+        log.info("Players on network: {}", ServerHandler.getInstance().getPlayerCountOfNetwork());
+        log.info("{} server(s) active:", servers.size());
         log.info(servers.stream().map(this::getServerDetails).collect(Collectors.joining(", ")));
 
         if (!ServerHandler.getInstance().getStartQueue().isEmpty()) {

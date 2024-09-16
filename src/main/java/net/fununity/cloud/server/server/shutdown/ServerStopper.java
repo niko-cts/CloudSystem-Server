@@ -1,22 +1,22 @@
-package net.fununity.cloud.server.server;
+package net.fununity.cloud.server.server.shutdown;
 
+import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.common.utils.CloudLogger;
-import net.fununity.cloud.server.client.ClientHandler;
-import net.fununity.cloud.server.misc.ServerUtils;
+import net.fununity.cloud.server.netty.ClientHandler;
+import net.fununity.cloud.server.server.Server;
+import net.fununity.cloud.server.server.ServerHandler;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+@Slf4j
 public class ServerStopper {
-
 
     private final Server server;
     private final Set<ServerStoppingState> finishedStages;
-    private static final CloudLogger LOG = CloudLogger.getLogger(ServerStopper.class.getSimpleName());
 
     private Timer timer;
 
@@ -47,13 +47,13 @@ public class ServerStopper {
 
     protected void executeState(ServerStoppingState state) {
         if (finishedStages.contains(state)) {
-            LOG.debug("Tried to triggered stage for %s which was already fired: %s", server.getServerId(), state);
+            LOG.debug("Tried to triggered stage for {} which was already fired: {}", server.getServerId(), state);
             return;
         }
 
         finishedStages.add(state);
         cancelTimer();
-        LOG.debug("Executing state %s", state);
+        LOG.debug("Executing state {}", state);
 
         switch (state) {
             case REQ_BUNGEECORD_REMOVE -> sendBungeeRemoveRequest();
@@ -87,7 +87,7 @@ public class ServerStopper {
 
 
     private void clientDisconnected() {
-        LOG.info("Client disconnected %s", server.getServerId());
+        LOG.info("Client disconnected {}", server.getServerId());
         finishedStages.add(ServerStoppingState.REQ_CLIENT_SHUTDOWN); // no need for another shutdown, if server disconnected unnormally
         server.serverStopped();
         runTimer(1500);
@@ -104,40 +104,40 @@ public class ServerStopper {
         if (server.getLogFilePrefix() != null)
             server.saveLogFile();
 
-        LOG.debug("Deleting server %s...", server.getServerId());
+        LOG.debug("Deleting server {}...", server.getServerId());
         ServerType serverType = server.getServerType();
         try {
             if (ServerUtils.needsServerBackup(serverType)) {
                 server.moveToBackup(false);
             } else {
                 FileUtils.deleteQuietly(new File(server.serverPath));
-                LOG.debug("Server deleted: %s", server.serverPath);
+                LOG.debug("Server deleted: {}", server.serverPath);
             }
         } catch (IOException exception) {
-            LOG.error("Error while deleting server %s: %s", server.getServerId(), exception.getMessage());
+            LOG.error("Error while deleting server {}: {}", server.getServerId(), exception.getMessage());
         }
 
-        LOG.info("Server %s was deleted completely.", server.getServerId());
+        LOG.info("Server {} was deleted completely.", server.getServerId());
         removeServer();
     }
 
     protected void removeServer() {
-        LOG.debug("Removing server %s...", server.getServerId());
+        LOG.debug("Removing server {}...", server.getServerId());
         ServerHandler.getInstance().removeServer(server);
         ServerHandler.getInstance().actionWhenServerTypeShutdowns(server);
 
         ServerHandler.getInstance().removeStopQueue(server);
 
         if (server.getShutdownProcess() != null) {
-            LOG.debug("Executing shutdown process for %s", server.getServerId());
-            server.getShutdownProcess().serverStopped();
+            LOG.debug("Executing shutdown process for {}", server.getServerId());
+            server.getShutdownProcess().serverStopped(); // Did this already in server manager
         }
     }
 
     private void cancelTimer() {
         if (timer == null) return;
         try {
-            LOG.debug("Cancel timer for %s", server.getServerId());
+            LOG.debug("Cancel timer for {}", server.getServerId());
             timer.cancel();
         } catch (IllegalStateException ignored) {}
     }
@@ -147,7 +147,7 @@ public class ServerStopper {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                LOG.debug("Scheduled timer finished for %s! Executing next states... Tasks done: %s", server.getServerId(), finishedStages);
+                LOG.debug("Scheduled timer finished for {}! Executing next states... Tasks done: {}", server.getServerId(), finishedStages);
                 nextState();
             }
         }, delay);

@@ -1,0 +1,78 @@
+stages:
+  - build
+  - test
+  - package
+  - deploy
+
+variables:
+  NEXUS_USERNAME: "${NEXUS_USERNAME}"
+  NEXUS_PASSWORD: "${NEXUS_PASSWORD}"
+  SETTINGS: "/builds/$CI_PROJECT_PATH/.m2/settings.xml"
+  MAVEN_CLI_OPTS_DEPLOY: "-B -s $SETTINGS"
+  NEXUS_SNAPSHOT_NAME: "${NEXUS_DEV_REPO}"
+  NEXUS_SNAPSHOT_URL: "${NEXUS_DEV_REPO_URL}"
+  NEXUS_RELEASE_NAME: "${NEXUS_MAIN_REPO}"
+  NEXUS_RELEASE_URL: "${NEXUS_MAIN_REPO_URL}"
+
+build:
+  stage: build
+  script:
+    - mvn compile
+
+test:
+  stage: test
+  script:
+    - mvn test
+
+package:
+  stage: package
+  only:
+    - master
+    - develop
+  script:
+    - mvn clean package
+  artifacts:
+    paths:
+      - target/*.jar  # Save the JAR file as an artifact for later stages
+
+deploy_snapshots:
+  stage: deploy
+  only:
+    refs:
+      - develop
+  before_script:
+    - mkdir -p /builds/$CI_PROJECT_PATH/.m2
+    # Create the settings.xml file with credentials from environment variables
+    - echo "<settings><servers><server><id>$NEXUS_SNAPSHOT_NAME</id><username>$NEXUS_USERNAME</username><password>$NEXUS_PASSWORD</password></server></servers></settings>" > $SETTINGS
+  script:
+    - export JAR_FILE=$(mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout).jar
+    # Verify if the JAR file exists before deploying
+    - 'if [[ -f "target/$JAR_FILE" ]]; then echo "JAR file found: $JAR_FILE"; else echo "JAR file $JAR_FILE not found in target/"; exit 1; fi'
+    - 'if [[ -f "$SETTINGS" ]]; then echo "settings.xml file found"; else echo "settings.xml file could not be found in: $SETTINGS"; exit 1; fi'
+
+    # Deploy the jar file using Maven
+    - echo "Deploying to Nexus Repo=$NEXUS_SNAPSHOT_NAME on URL=$NEXUS_SNAPSHOT_URL FILE=target/$JAR_FILE with USERNAME=$NEXUS_USERNAME"
+    - mvn deploy:deploy-file -Durl=$NEXUS_SNAPSHOT_URL -DrepositoryId=$NEXUS_SNAPSHOT_NAME -Dfile=target/$JAR_FILE -DpomFile=pom.xml $MAVEN_CLI_OPTS_DEPLOY 
+
+deploy_releases:
+  stage: deploy
+  only:
+    refs:
+      - $CI_DEFAULT_BRANCH
+  when: manual
+  allow_failure: false
+  before_script:
+    # Create the .m2 directory if it doesn't exist
+    - mkdir -p /builds/$CI_PROJECT_PATH/.m2
+    # Create the settings.xml file with credentials from environment variables
+    - echo "<settings><servers><server><id>$NEXUS_RELEASE_NAME</id><username>$NEXUS_USERNAME</username><password>$NEXUS_PASSWORD</password></server></servers></settings>" > $SETTINGS
+  script:
+    # Get the jar file dynamically using Maven property
+    - export JAR_FILE=$(mvn help:evaluate -Dexpression=project.build.finalName -q -DforceStdout).jar
+    # Verify if the JAR file exists before deploying
+    - 'if [[ -f "target/$JAR_FILE" ]]; then echo "JAR file found: $JAR_FILE"; else echo "JAR file $JAR_FILE not found in target/"; exit 1; fi'
+    - 'if [[ -f "$SETTINGS" ]]; then echo "settings.xml file found"; else echo "settings.xml file could not be found in: $SETTINGS"; exit 1; fi'
+
+    # Deploy the jar file using Maven
+    - echo "Deploying to Nexus Repo=$NEXUS_RELEASE_NAME on URL=$NEXUS_RELEASE_URL FILE=target/$JAR_FILE with USERNAME=$NEXUS_USERNAME"
+    - mvn deploy:deploy-file -Durl=$NEXUS_RELEASE_URL -DrepositoryId=$NEXUS_RELEASE_NAME -Dfile=target/$JAR_FILE -DpomFile=pom.xml $MAVEN_CLI_OPTS_DEPLOY 

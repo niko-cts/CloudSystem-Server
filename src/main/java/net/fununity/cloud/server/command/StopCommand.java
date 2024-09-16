@@ -2,8 +2,7 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.ServerHandler;
+import net.fununity.cloud.server.server.util.ServerUtils;
 
 public class StopCommand extends Command {
 
@@ -12,7 +11,7 @@ public class StopCommand extends Command {
      * @since 0.0.1
      */
     public StopCommand() {
-        super("stop", "stop <serverId>/<serverType>/all (save)", "Stops a specified server or all of one type. (saves log)");
+        super("stop", "stop <serverId>/<serverType>/all", "Stops a specified server or all of one type.");
     }
 
     /**
@@ -26,27 +25,25 @@ public class StopCommand extends Command {
             sendCommandUsage();
             return;
         }
-        String saveLog = args.length > 1 && args[1].equalsIgnoreCase("save") ? "Command" : null;
+
         if (args[0].equalsIgnoreCase("all")) {
             log.info("Shutting down servers...");
-            ServerHandler.getInstance().shutdownAllServers(saveLog);
+            ServerUtils.shutdownAll();
             return;
         }
 
         try {
             ServerType serverType = ServerType.valueOf(args[0]);
-            log.info("Shutting down %s...", serverType);
-            ServerHandler.getInstance().shutdownAllServersOfType(serverType, saveLog);
+            log.info("Shutting down all server of type {}...", serverType);
+            ServerUtils.shutdownAllServersOfType(serverType);
         } catch (IllegalArgumentException exception) {
-            Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
-            if (server == null) {
-                sendIllegalIdOrServerType(args[0]);
-                return;
-            }
-
-            log.info("Shutting down %s...", server.getServerId(), saveLog);
-            server.setSaveLogFile(saveLog);
-            ServerHandler.getInstance().shutdownServer(server, false);
+            manager.getServerByIdentifier(args[0]).ifPresentOrElse(
+                    server -> {
+                        log.info("Shutting down server {}...", server.getServerId());
+                        manager.requestStopServer(server);
+                    },
+                    () -> sendIllegalIdOrServerType(args[0])
+            );
         }
     }
 }

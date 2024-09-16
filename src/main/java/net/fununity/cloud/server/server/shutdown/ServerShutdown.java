@@ -1,4 +1,4 @@
-package net.fununity.cloud.server.server;
+package net.fununity.cloud.server.server.shutdown;
 
 import net.fununity.cloud.server.misc.MinigameHandler;
 

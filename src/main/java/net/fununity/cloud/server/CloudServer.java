@@ -1,30 +1,26 @@
 package net.fununity.cloud.server;
 
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.events.cloud.CloudEventManager;
-import net.fununity.cloud.common.utils.CloudLogger;
-import net.fununity.cloud.server.client.NettyHandler;
-import net.fununity.cloud.server.client.listeners.CloudEvents;
-import net.fununity.cloud.server.client.listeners.CloudEventsCache;
-import net.fununity.cloud.server.client.listeners.CloudEventsRequests;
 import net.fununity.cloud.server.command.CloudConsole;
-import net.fununity.cloud.server.misc.ConfigHandler;
+import net.fununity.cloud.server.config.ConfigHandler;
+import net.fununity.cloud.server.config.NetworkConfig;
+import net.fununity.cloud.server.netty.ClientHandler;
+import net.fununity.cloud.server.netty.NettyServer;
+import net.fununity.cloud.server.netty.listeners.CacheEventListener;
+import net.fununity.cloud.server.netty.listeners.GeneralEventListener;
+import net.fununity.cloud.server.netty.listeners.RequestEventListener;
 import net.fununity.cloud.server.server.ServerHandler;
+import net.fununity.cloud.server.server.ServerManager;
+import net.fununity.cloud.server.server.util.ServerUtils;
 
-import java.net.InetSocketAddress;
+import java.util.Optional;
 
-public class CloudServer implements Runnable {
+@Getter
+@Slf4j
+public class CloudServer {
 
-    private static final CloudLogger LOG = CloudLogger.getLogger(CloudServer.class.getSimpleName());
     private static final String HOSTNAME = "localhost";
     private static final int PORT = 1337;
 
@@ -35,81 +31,52 @@ public class CloudServer implements Runnable {
     }
 
     public static void main(String[] args) {
-        LOG.info("CloudServer is starting...");
-        new Thread(new CloudServer(), "Server").start();
-        ConfigHandler.createInstance(args);
-        CloudConsole.getInstance();
-    }
-
-    public static CloudLogger getLogger() {
-        return LOG;
+        new CloudServer(args);
     }
 
     private final CloudEventManager cloudEventManager;
+    private final NettyServer nettyServer;
+    private final ServerManager serverManager;
+    private final ConfigHandler configHandler;
+    private final ClientHandler clientHandler;
+    private final CloudConsole cloudConsole;
 
-    private CloudServer() {
+    private CloudServer(String[] args) {
         INSTANCE = this;
-        cloudEventManager = new CloudEventManager();
+        log.info("Booting up CloudServer...");
+        this.cloudEventManager = new CloudEventManager();
+        this.cloudEventManager.addCloudListener(new GeneralEventListener());
+        this.cloudEventManager.addCloudListener(new RequestEventListener());
+        this.cloudEventManager.addCloudListener(new CacheEventListener());
+        this.nettyServer = new NettyServer(HOSTNAME, PORT);
+        this.clientHandler = new ClientHandler();
+        this.serverManager = new ServerManager();
+        this.configHandler = new ConfigHandler(args);
+        this.cloudConsole = new CloudConsole();
+
+        Thread.ofVirtual().name("NettyServer").start(nettyServer);
+        Thread.ofVirtual().name("CloudConsole").start(cloudConsole);
     }
 
-    public void run() {
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        this.cloudEventManager.addCloudListener(new CloudEvents());
-        this.cloudEventManager.addCloudListener(new CloudEventsCache());
-        this.cloudEventManager.addCloudListener(new CloudEventsRequests());
-        try {
-            ServerBootstrap bootstrap = new ServerBootstrap();
-            bootstrap.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .localAddress(new InetSocketAddress(HOSTNAME, PORT))
-                    .childHandler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel socketChannel) {
-                            socketChannel.pipeline().addLast(
-                                    new ObjectEncoder(),
-                                    new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.cacheDisabled(null)),
-                                    new NettyHandler());
-                        }
-                    });
-
-            ChannelFuture channelFuture = bootstrap.bind().sync();
-            LOG.debug("Opening new ServerBootstrap on %s:%s", HOSTNAME, PORT);
-            channelFuture.channel().closeFuture().sync();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOG.warn("NioSocket was interrupted: " + e.getMessage());
-        } finally {
-            LOG.debug("Shutting down boss and workergroup...");
-            bossGroup.shutdownGracefully();
-            workerGroup.shutdownGracefully();
-        }
-    }
-
-    /**
-     * Gets the cloud event manager.
-     *
-     * @return CloudEventManager - the cloud event manager.
-     * @see CloudEventManager
-     * @since 0.0.1
-     */
-    public CloudEventManager getCloudEventManager() {
-        return this.cloudEventManager;
-    }
-
-    /**
+	/**
      * Shuts down every server and the cloud.
      *
      * @since 0.0.1
      */
     public void shutdownEverything() {
-        if (!ServerHandler.getInstance().getServers().isEmpty()) {
-            LOG.debug("Exit Cloud: %s servers are still up, try to shutdown...", ServerHandler.getInstance().getServers().size());
-            ServerHandler.getInstance().exitCloud();
+        if (!serverManager.getServers().isEmpty() && !serverManager.getStartQueue().isEmpty()) {
+            log.debug("Exit Cloud: {} servers are still up, try to shutdown...", ServerHandler.getInstance().getServers().size());
+            ServerUtils.shutdownAll();
             return;
         }
-        LOG.debug("Exit Cloud: Console shutdown...");
-        CloudConsole.getInstance().shutDown();
+        log.debug("Exit Cloud: Console shutdown...");
+        cloudConsole.shutDown();
+        log.debug("Exit Cloud: Stopping NettyServer...");
+        nettyServer.stop();
         System.exit(0);
+    }
+
+    public Optional<NetworkConfig> getNetworkConfig() {
+        return Optional.ofNullable(getConfigHandler()).map(ConfigHandler::getNetworkConfig);
     }
 }
