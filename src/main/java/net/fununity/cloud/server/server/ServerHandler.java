@@ -29,19 +29,7 @@ import java.util.stream.Collectors;
 public class ServerHandler {
 
     public static final int MAX_RAM = 35200;
-    private static ServerHandler instance;
 
-    /**
-     * Gets the instance of the singleton ServerHandler.
-     *
-     * @return ServerHandler - the server handler.
-     * @since 0.0.1
-     */
-    public static ServerHandler getInstance() {
-        if (instance == null)
-            instance = new ServerHandler();
-        return instance;
-    }
 
 
     private final ClientHandler clientHandler;

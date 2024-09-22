@@ -25,14 +25,14 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Getter
 public class ServerManager {
 
-	private final List<Server> servers;
+	private final List<Server> runningServers;
 	private final Queue<Server> startQueue;
 	private final Queue<Server> stopQueue;
 	@Getter
 	private final Set<ServerType> expireServers;
 
 	public ServerManager() {
-		this.servers = new CopyOnWriteArrayList<>();
+		this.runningServers = new CopyOnWriteArrayList<>();
 		this.stopQueue = new ConcurrentLinkedQueue<>();
 		this.startQueue = new ConcurrentLinkedQueue<>();
 		this.expireServers = new CopyOnWriteArraySet<>();
@@ -88,12 +88,12 @@ public class ServerManager {
 
 	public void serverCompletelyStarted(Server server) {
 		log.info("Server {} has started.", server.getServerId());
-		servers.add(server);
 		startQueue.remove(server);
-		if (!startQueue.isEmpty())
-			startQueue.peek().start();
+		runningServers.add(server);
 		if (server.isMarkedForStop())
 			requestStopServer(server);
+		if (!startQueue.isEmpty())
+			startQueue.peek().start();
 	}
 
 	public void requestRestartServer(Server server) {
@@ -114,11 +114,16 @@ public class ServerManager {
 
 		log.info("Adding server {} to stop queue", server.getServerId());
 		server.markForStop();
-		server.setShutdownProcess(serverStopped);
-		servers.remove(server);
-		stopQueue.add(server);
-		if (stopQueue.size() == 1) {
-			server.stop();
+		if (serverStopped != null)
+			server.setShutdownProcess(serverStopped);
+
+		if (runningServers.contains(server)) { // only remove server when stopped
+			stopQueue.add(server);
+
+			runningServers.remove(server);
+			if (stopQueue.size() == 1) {
+				server.stop();
+			}
 		}
 	}
 
@@ -142,10 +147,9 @@ public class ServerManager {
 			stopQueue.peek().stop();
 	}
 
-	public Optional<ServerDefinition> getServerDefinitionByPort(int port) {
-		return getAllServers().stream().filter(s -> s.getServerPort() == port).findFirst().map(s ->
-				new ServerDefinition(s.getServerId(), s.getServerName(), s.getServerIp(), s.getServerPort(),
-						s.getConfig().getRam(), s.getPlayerCount(), s.getMaxPlayers(), s.getConfig().getServerType()));
+	public ServerDefinition getServerDefinition(Server server) {
+		return new ServerDefinition(server.getServerId(), server.getServerName(), server.getServerIp(), server.getServerPort(),
+						server.getConfig().getRam(), server.getPlayerCount(), server.getMaxPlayers(), server.getConfig().getServerType());
 	}
 
 	/**
@@ -161,7 +165,7 @@ public class ServerManager {
 	}
 
 	public @NotNull List<Server> getRunningServerByType(@Nullable ServerType serverType) {
-		return serverType != null ? getServers().stream().filter(s -> s.getConfig().getServerType() == serverType).toList() : List.of();
+		return serverType != null ? getRunningServers().stream().filter(s -> s.getConfig().getServerType() == serverType).toList() : List.of();
 	}
 
 	public @NotNull List<Server> getAllServerByType(@Nullable ServerType serverType) {
@@ -175,7 +179,7 @@ public class ServerManager {
 	 * @since 1.0
 	 */
 	public @NotNull List<Server> getAllServers() {
-		List<Server> servers = getServers();
+		List<Server> servers = getRunningServers();
 		servers.addAll(this.startQueue);
 		servers.addAll(this.stopQueue);
 		return servers;

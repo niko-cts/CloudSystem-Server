@@ -31,7 +31,7 @@ public class RequestEventListener extends AbstractEventListener {
 			case CloudEvent.REQ_SERVER_INFO -> {
 				int port = Integer.parseInt(String.valueOf(cloudEvent.getData().getFirst()));
 
-				MANAGER.getServerDefinitionByPort(port).ifPresentOrElse(
+				MANAGER.getServerDefinition(port).ifPresentOrElse(
 						def -> CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def)),
 						() -> log.warn("Could not send server definition for port {}", port));
 			}

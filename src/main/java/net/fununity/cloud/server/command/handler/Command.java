@@ -3,8 +3,11 @@ package net.fununity.cloud.server.command.handler;
 import lombok.Getter;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.command.CloudConsole;
+import net.fununity.cloud.server.server.Server;
 import net.fununity.cloud.server.server.ServerManager;
 import org.slf4j.Logger;
+
+import java.util.function.Consumer;
 
 /**
  * The abstract Command class for the command system.
@@ -55,8 +58,12 @@ public abstract class Command {
 		log.warn("This servertype is invalid! Type 'servertype' to lookup the servertypes.");
 	}
 
+	public void getServerIdOrSendIllegal(String serverId, Consumer<Server> server) {
+		manager.getServerByIdentifier(serverId).ifPresentOrElse(server, () -> sendIllegalIdOrServerType(serverId));
+	}
+
 	public void sendIllegalServerId(String type) {
-		log.warn(type + " is invalid! Type 'list' to see all servers.");
+		log.warn("{} is invalid! Type 'list' to see all servers.", type);
 	}
 
 	public void sendIllegalIdOrServerType(String argument) {

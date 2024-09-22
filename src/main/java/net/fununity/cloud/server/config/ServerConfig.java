@@ -10,11 +10,10 @@ import java.util.List;
 
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "maxPlayers")
 public class ServerConfig {
 	@JsonProperty("serverType")
 	private ServerType serverType;
-
 
 	@JsonProperty("maxPlayers")
 	private int maxPlayers;
@@ -34,8 +33,8 @@ public class ServerConfig {
 	@JsonProperty("priority")
 	private int priority;
 
-	@JsonProperty("save")
-	private boolean save;
+	@JsonProperty("backup")
+	private boolean backup;
 
 	@JsonProperty("plugins")
 	private List<String> plugins;

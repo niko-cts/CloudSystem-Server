@@ -1,5 +1,6 @@
 package net.fununity.cloud.server.command;
 
+import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.command.handler.Command;
 
 public class HelpCommand extends Command {
@@ -20,7 +21,7 @@ public class HelpCommand extends Command {
     @Override
     public void execute(String[] args) {
         log.info("All Commands listed below:");
-        for (Command command : CloudConsole.getInstance().getCommandHandler().getCommands()) {
+        for (Command command : CloudServer.getInstance().getCloudConsole().getCommandHandler().getCommands()) {
             command.sendCommandUsage();
         }
     }

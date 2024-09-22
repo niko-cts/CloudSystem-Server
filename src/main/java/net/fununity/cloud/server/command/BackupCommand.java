@@ -1,8 +1,6 @@
 package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.ServerHandler;
 
 import java.io.IOException;
 
@@ -33,15 +31,13 @@ public class BackupCommand extends Command {
 			sendCommandUsage();
 			return;
 		}
-		Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
-		if (server == null) {
-			sendIllegalServerId(args[0]);
-			return;
-		}
-		try {
-			server.moveToBackup(true);
-		} catch (IOException e) {
-			log.error("Error while try to backup server: {}", e.getMessage());
-		}
+		getServerIdOrSendIllegal(args[0], server -> {
+			// TODO
+			try {
+				server.moveToBackup(true);
+			} catch (IOException e) {
+				log.error("Error while try to backup server:", e);
+			}
+		});
 	}
 }

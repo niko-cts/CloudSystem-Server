@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.util.ServerUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -76,25 +75,6 @@ public class ClientHandler {
 	 */
 	public void removeClient(@NotNull ChannelHandlerContext ctx) {
 		getClients().entrySet().stream().filter(c -> c.getValue().channel() == ctx.channel()).forEach(c -> removeClient(c.getKey()));
-	}
-
-	/**
-	 * Remaps the ChannelHandlerContext to the correct server id.
-	 *
-	 * @param ctx  ChannelHandlerContext - the channel handler context.
-	 * @param port int - the port of the server.
-	 * @since 0.0.1
-	 */
-	public void remapChannelHandlerContext(@NotNull ChannelHandlerContext ctx, int port) {
-		log.debug("Remapping ctx for {} to port {}", ctx.channel(), port);
-		removeClient(ctx);
-		ServerUtils.getServerIdentifierByPort(port).ifPresentOrElse(
-				s -> this.clients.put(s, ctx),
-				() -> {
-					log.warn("Could not remap ctx {} for port {}! Will close channel...", ctx, port);
-					ctx.close();
-				}
-		);
 	}
 
 	/**

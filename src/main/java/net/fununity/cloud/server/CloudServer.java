@@ -11,7 +11,6 @@ import net.fununity.cloud.server.netty.NettyServer;
 import net.fununity.cloud.server.netty.listeners.CacheEventListener;
 import net.fununity.cloud.server.netty.listeners.GeneralEventListener;
 import net.fununity.cloud.server.netty.listeners.RequestEventListener;
-import net.fununity.cloud.server.server.ServerHandler;
 import net.fununity.cloud.server.server.ServerManager;
 import net.fununity.cloud.server.server.util.ServerUtils;
 
@@ -64,8 +63,8 @@ public class CloudServer {
      * @since 0.0.1
      */
     public void shutdownEverything() {
-        if (!serverManager.getServers().isEmpty() && !serverManager.getStartQueue().isEmpty()) {
-            log.debug("Exit Cloud: {} servers are still up, try to shutdown...", ServerHandler.getInstance().getServers().size());
+        if (!serverManager.getRunningServers().isEmpty() && !serverManager.getStartQueue().isEmpty()) {
+            log.debug("Exit Cloud: {} servers are still up, try to shutdown...", serverManager.getRunningServers().size());
             ServerUtils.shutdownAll();
             return;
         }

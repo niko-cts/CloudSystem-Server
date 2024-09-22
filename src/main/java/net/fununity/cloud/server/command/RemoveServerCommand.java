@@ -1,8 +1,6 @@
 package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.ServerHandler;
 
 /**
  * Command class to remove a server, when crashed.
@@ -32,13 +30,9 @@ public class RemoveServerCommand extends Command {
             return;
         }
 
-        Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
-        if (server == null) {
-            sendIllegalServerId(args[0]);
-            return;
-        }
-
-        log.info("Command successfully!");
-        server.flushServer();
+        getServerIdOrSendIllegal(args[0], server -> {
+            log.info("Command successfully!");
+            server.flushServer();
+        });
     }
 }

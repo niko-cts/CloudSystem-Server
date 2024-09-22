@@ -2,7 +2,6 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.server.ServerHandler;
 
 public class ExpireCommand extends Command {
 
@@ -27,8 +26,8 @@ public class ExpireCommand extends Command {
         }
         try {
             ServerType serverType = ServerType.valueOf(args[0]);
-            ServerHandler.getInstance().expire(serverType);
-            log.info("Expire-Mode enabled on " + serverType);
+            manager.getExpireServers().add(serverType);
+	        log.info("Expire-Mode enabled on {}", serverType);
         } catch (IllegalArgumentException exception) {
             sendIllegalServerType();
         }

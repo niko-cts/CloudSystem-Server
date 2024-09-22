@@ -3,7 +3,6 @@ package net.fununity.cloud.server.server;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
@@ -34,7 +33,6 @@ import java.time.format.DateTimeFormatter;
  * @since 0.0.1
  */
 @EqualsAndHashCode
-@ToString
 @Slf4j
 public final class Server {
 
@@ -48,6 +46,7 @@ public final class Server {
 	@Getter
 	@NotNull
 	private final String serverId;
+
 	@Getter
 	@NotNull
 	private final String serverIp;
@@ -316,5 +315,19 @@ public final class Server {
 
 	public void markForStop() {
 		this.markedForStop = true;
+	}
+
+	@Override
+	public String toString() {
+		return "Server{" +
+		       "serverId='" + serverId + '\'' +
+		       ", serverName='" + serverName + '\'' +
+		       ", serverIp='" + serverIp + '\'' +
+		       ", serverPort=" + serverPort +
+		       ", markedForStop=" + markedForStop +
+		       ", playerCount=" + playerCount +
+		       ", maxPlayers=" + maxPlayers +
+		       ", config=" + config +
+		       '}';
 	}
 }

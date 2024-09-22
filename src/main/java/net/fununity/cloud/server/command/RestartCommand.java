@@ -2,8 +2,7 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.ServerHandler;
+import net.fununity.cloud.server.server.util.ServerUtils;
 
 public class RestartCommand extends Command {
 
@@ -28,20 +27,17 @@ public class RestartCommand extends Command {
         }
         try {
             ServerType serverType = ServerType.valueOf(args[0]);
-            if(serverType == ServerType.BUNGEECORD) {
+            if (serverType == ServerType.BUNGEECORD) {
                 log.warn("This servertype can not be restarted!");
                 return;
             }
-            log.info("Restarting all servers with server type " + serverType);
-            ServerHandler.getInstance().restartAllServersOfType(serverType);
+	        log.info("Restarting all servers with server type {}", serverType);
+            ServerUtils.restartAllServerOfType(serverType);
         } catch (IllegalArgumentException exception) {
-            Server server = ServerHandler.getInstance().getServerByIdentifier(args[0]);
-            if (server == null) {
-                sendIllegalIdOrServerType(args[0]);
-                return;
-            }
-            log.info("Restarting server " + args[0]);
-            ServerHandler.getInstance().restartServer(server);
+            getServerIdOrSendIllegal(args[0], server -> {
+	            log.info("Restarting server {}", server.getServerName());
+                manager.requestRestartServer(server);
+            });
         }
     }
 }

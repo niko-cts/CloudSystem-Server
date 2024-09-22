@@ -26,6 +26,13 @@ public class ServerUtils {
 	private static final ServerManager MANAGER = CloudServer.getInstance().getServerManager();
 	private static final AtomicInteger NETWORK_AMOUNT = new AtomicInteger(0);
 
+	public static void restartAllServerOfType(ServerType serverType) {
+		MANAGER.getRunningServerByType(serverType).forEach(MANAGER::requestRestartServer);
+		MANAGER.getStartQueue().stream().filter(s -> s.getConfig().getServerType() == serverType).forEach(server -> {
+			server.markForStop();
+			server.setShutdownProcess(() -> MANAGER.createServerByServerType(serverType));
+		});
+	}
 
 	public static void shutdownAllServersOfType(ServerType serverType) {
 		log.info("Stopping all server of type {}...", serverType);
@@ -36,7 +43,7 @@ public class ServerUtils {
 	public static void shutdownAll() {
 		log.info("Stopping all server...");
 		MANAGER.getStartQueue().forEach(Server::markForStop);
-		MANAGER.getServers().stream().filter(s -> s.getConfig().getServerType() != ServerType.BUNGEECORD).forEach(MANAGER::requestStopServer);
+		MANAGER.getRunningServers().stream().filter(s -> s.getConfig().getServerType() != ServerType.BUNGEECORD).forEach(MANAGER::requestStopServer);
 		MANAGER.getAllServerByType(ServerType.BUNGEECORD).forEach(MANAGER::requestStopServer);
 	}
 
@@ -48,7 +55,7 @@ public class ServerUtils {
 	 * @since 0.0.1
 	 */
 	public static Optional<String> getServerIdentifierByPort(int port) {
-		return MANAGER.getServers().stream().filter(s -> s.getServerPort() == port)
+		return MANAGER.getRunningServers().stream().filter(s -> s.getServerPort() == port)
 				.findFirst().map(Server::getServerId);
 	}
 
@@ -153,7 +160,7 @@ public class ServerUtils {
 	 * @since 0.0.1
 	 */
 	public static int getPlayerCountOfNetwork() {
-		return MANAGER.getServers().stream().mapToInt(Server::getPlayerCount).sum();
+		return MANAGER.getRunningServers().stream().mapToInt(Server::getPlayerCount).sum();
 	}
 
 	/**

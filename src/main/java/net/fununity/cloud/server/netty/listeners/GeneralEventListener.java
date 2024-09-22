@@ -8,7 +8,6 @@ import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.netty.ClientHandler;
 import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.ServerHandler;
 import net.fununity.cloud.server.server.ServerManager;
 import net.fununity.cloud.server.server.util.EventSendingHelper;
 import net.fununity.cloud.server.server.util.ServerUtils;
@@ -23,46 +22,35 @@ public class GeneralEventListener extends AbstractEventListener {
 
 	@Override
 	public void newCloudEvent(CloudEvent cloudEvent) {
-		ChannelHandlerContext ctx;
-		String serverId;
+		final ChannelHandlerContext ctx = (ChannelHandlerContext) cloudEvent.getData().getLast();
+
 		switch (cloudEvent.getId()) {
 			case CloudEvent.CLIENT_REGISTER_INFO -> {
-				ctx = (ChannelHandlerContext) cloudEvent.getData().getLast();
-				String clientId = cloudEvent.getData().getFirst().toString();
-				CLIENT_HANDLER.saveClient(clientId, ctx);
 
-				int port;
+				getServerByIdentifierOrLogWarning(cloudEvent.getData().getFirst(), server -> {
+					CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(MANAGER.getServerDefinition(server)));
 
-				if (cloudEvent.getData().size() == 2) { // BUNGEE CORD ONLY
-					List<Server> bungeeServers = ServerHandler.getInstance().getServersByType(ServerType.BUNGEECORD);
-					if (bungeeServers.isEmpty()) {
-						log.error("There was a bungeecord server registration, but no bungeecord is registered in the list! Sending disconnect...");
-						CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
-						return;
-					}
-					port = bungeeServers.getLast().getServerPort();
-				} else {
-					port = Integer.parseInt(cloudEvent.getData().get(1).toString());
-				}
-
-				CLIENT_HANDLER.remapChannelHandlerContext(ctx, port);
-
-				MANAGER.getServerDefinitionByPort(port).ifPresentOrElse(def -> {
-					CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def));
-
-					if (def.serverType() == ServerType.LOBBY) {
+					if (server.getConfig().getServerType() == ServerType.LOBBY) {
 						EventSendingHelper.sendLobbyInformationToLobbies();
-					} else if (def.serverType() == ServerType.COCATTACK) {
+					} else if (server.getConfig().getServerType() == ServerType.COCATTACK) {
 						EventSendingHelper.sendCocAttackServerAmount();
 					}
 
-					log.info("Client registered: {}", def.serverId());
-					MANAGER.getServerByIdentifier(def.serverId()).ifPresent(MANAGER::serverCompletelyStarted);
-				}, () -> {
-					log.error("Could not get server definition of {}:{}! Can not register server!", clientId, port);
+					log.info("Client registered: {}", server.getServerId());
+					MANAGER.getServerByIdentifier(server.getServerId()).ifPresent(MANAGER::serverCompletelyStarted);
+				}, s -> {
+					log.error("Client registered with unknown server id {}! Will send disconnect!", s);
 					CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
-					ctx.close();
 				});
+			}
+			case CloudEvent.CLIENT_STARTED_INFO -> {
+				getServerByIdentifierOrLogWarning(cloudEvent.getData().getFirst(), server -> {
+					EventSendingHelper.sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_ADD_SERVER)
+							.addData(server.getServerId())
+							.addData(server.getServerName())
+							.addData(server.getServerIp())
+							.addData(server.getServerPort()));
+				}, "Client started but server id could not be found!");
 			}
 			case CloudEvent.CLIENT_DISCONNECT_GRACEFULLY -> getServerByIdentifierOrLogWarning(cloudEvent.getData().getFirst(),
 					Server::clientDisconnected, "Client {} sent disconnection, but could not be found.");
@@ -73,7 +61,7 @@ public class GeneralEventListener extends AbstractEventListener {
 					Server::receivedClientAliveResponse,
 					"Server '{}' send alive response, but could not be found");
 			case CloudEvent.NOTIFY_SERVER_PLAYER_COUNT -> {
-				serverId = String.valueOf(cloudEvent.getData().getFirst());
+				String serverId = String.valueOf(cloudEvent.getData().getFirst());
 				int playerCount = Integer.parseInt(cloudEvent.getData().get(1).toString());
 				ServerUtils.serverPlayerCountUpdate(serverId, playerCount);
 			}
@@ -82,9 +70,9 @@ public class GeneralEventListener extends AbstractEventListener {
 			case CloudEvent.FORWARD_TO_BUNGEE ->
 					EventSendingHelper.sendToBungeeCord((CloudEvent) cloudEvent.getData().get(0));
 			case CloudEvent.FORWARD_TO_SERVER -> {
-				ctx = CLIENT_HANDLER.getClientContext(cloudEvent.getData().get(0).toString());
-				if (ctx != null)
-					CLIENT_HANDLER.sendEvent(ctx, (CloudEvent) cloudEvent.getData().get(1));
+				ChannelHandlerContext toSend = CLIENT_HANDLER.getClientContext(String.valueOf(cloudEvent.getData().getFirst()));
+				if (toSend != null)
+					CLIENT_HANDLER.sendEvent(toSend, (CloudEvent) cloudEvent.getData().get(1));
 			}
 			case CloudEvent.FORWARD_TO_SERVERTYPE -> {
 				ServerType serverType = (ServerType) cloudEvent.getData().getFirst();
