@@ -11,9 +11,8 @@ import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.config.ServerConfig;
 import net.fununity.cloud.server.server.shutdown.ServerShutdown;
 import net.fununity.cloud.server.server.start.ServerAliveChecker;
+import net.fununity.cloud.server.server.start.ServerStarter;
 import net.fununity.cloud.server.server.util.ServerUtils;
-import net.fununity.cloud.serverstarter.PluginLocation;
-import net.fununity.cloud.serverstarter.ServerStarter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -102,11 +101,8 @@ public final class Server {
 		}
 
 		this.serverState = ServerState.BOOTING;
+		new ServerStarter(this).loadPluginsAndStartServerDockerized();
 		this.aliveChecker = new ServerAliveChecker(this);
-		new ServerStarter(config.getServerType().name(), serverId, serverPort, serverDir,
-				CloudServer.getInstance().getConfigHandler().getByNames(config.getPlugins())
-						.stream().map(plugin -> new PluginLocation(new File(plugin.getLocalPath()), plugin.getNexusPluginUrl())).toList())
-				.loadPluginsAndStartServerDockerized();
 	}
 
 	public void stop() {
@@ -152,6 +148,7 @@ public final class Server {
 	}
 
 	public void receivedClientAliveResponse() {
+		this.serverState = ServerState.RUNNING;
 		if (this.aliveChecker != null)
 			this.aliveChecker.receivedEvent();
 	}
@@ -167,6 +164,7 @@ public final class Server {
 		       ", serverName='" + serverName + '\'' +
 		       ", serverIp='" + serverIp + '\'' +
 		       ", serverPort=" + serverPort +
+		       ", serverState=" + serverState +
 		       ", markedForStop=" + markedForStop +
 		       ", playerCount=" + playerCount +
 		       ", maxPlayers=" + maxPlayers +
