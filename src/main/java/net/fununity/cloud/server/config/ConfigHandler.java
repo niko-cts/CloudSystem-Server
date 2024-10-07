@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.server.ServerType;
-import net.fununity.cloud.server.server.ServerHandler;
+import net.fununity.cloud.server.CloudServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,7 +62,7 @@ public class ConfigHandler {
 		} else {
 			for (String server : customServers.split(",")) {
 				try {
-					ServerHandler.getInstance().createServerByServerType(ServerType.valueOf(server));
+					CloudServer.getInstance().getServerManager().createServerByServerType(ServerType.valueOf(server));
 				} catch (IllegalArgumentException exception) {
 					log.error("Could not start server, because illegal servertype: {}", server);
 				}
@@ -111,9 +111,11 @@ public class ConfigHandler {
 			if (!unsetServer.isEmpty())
 				log.warn("Some server were not be set in the server config but are found as ServerTypes: {}", unsetServer);
 
-			String notfoundPlugins = getPluginConfig().stream().filter(f -> !new File(f.getPath()).exists()).map(PluginConfig::getName).collect(Collectors.joining(", "));
+			String notfoundPlugins = getPluginConfig().stream()
+					.filter(f -> !new File(f.getLocalPath()).exists())
+					.map(PluginConfig::getName).collect(Collectors.joining(", "));
 			if (!notfoundPlugins.isEmpty())
-				log.warn("The following plugin-names do not have a valid path: {}", notfoundPlugins);
+				log.warn("The following plugin-names have not be found locally: {}", notfoundPlugins);
 		} catch (IOException e) {
 			log.error("The network config file could not been loaded correctly: ", e);
 		}
@@ -124,12 +126,16 @@ public class ConfigHandler {
 		for (ServerConfig server : serverConfig) {
 			if (server.getAmountOnStartup() > 0) {
 				for (int i = 0; i < server.getAmountOnStartup(); i++)
-					ServerHandler.getInstance().createServerByServerType(server.getServerType());
+					CloudServer.getInstance().getServerManager().createServerByServerType(server.getServerType());
 			}
 		}
 	}
 
 	public Optional<ServerConfig> getByServerConfigByType(ServerType serverType) {
 		return serverConfig.stream().filter(s -> s.getServerType() == serverType).findFirst();
+	}
+
+	public List<PluginConfig> getByNames(List<String> pluginNames) {
+		return pluginConfig.stream().filter(plugin -> pluginNames.contains(plugin.getName())).toList();
 	}
 }

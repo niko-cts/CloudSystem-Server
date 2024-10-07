@@ -11,21 +11,9 @@ public class PluginConfig {
 	@JsonProperty("name")
 	private String name;
 
-	@JsonProperty("path")
-	private String path;
+	@JsonProperty("localPath")
+	private String localPath;
 
-	@JsonProperty("nexusUrl")
-	private String nexusUrl;
-
-	@JsonProperty("repositoryId")
-	private String repositoryId;
-
-	@JsonProperty("group")
-	private String group;
-
-	@JsonProperty("artifactId")
-	private String artifactId;
-
-	@JsonProperty("version")
-	private String version;
+	@JsonProperty("nexusPluginUrl")
+	private String nexusPluginUrl;
 }

@@ -22,64 +22,64 @@ import java.util.TimerTask;
 @Slf4j
 public class ServerAliveChecker extends TimerTask {
 
-    private final long periodInMillis;
-    private final int eventOnTimerRuns;
+	private final long periodInMillis;
+	private final int eventOnTimerRuns;
 
-    private final Server server;
-    private final Timer timer;
-    private int aliveOrdinal;
+	private final Server server;
+	private final Timer timer;
+	private int aliveOrdinal;
 
-    /**
-     * Instantiates the class and starts the repeation.
-     *
-     * @param server Server - the server instance.
-     * @since 0.0.1
-     */
-    public ServerAliveChecker(Server server) {
-        this.periodInMillis = CloudServer.getInstance().getNetworkConfig().map(NetworkConfig::getAliveEventPeriodInMillis).orElse(10000L);
-        this.eventOnTimerRuns = CloudServer.getInstance().getNetworkConfig().map(NetworkConfig::getStartSendingAliveEventOnTimerRuns).orElse(30);
-        this.server = Objects.requireNonNull(server);
-        this.aliveOrdinal = 0;
-        timer = new Timer();
-        timer.schedule(this, 30000, periodInMillis);
-    }
+	/**
+	 * Instantiates the class and starts the repeation.
+	 *
+	 * @param server Server - the server instance.
+	 * @since 0.0.1
+	 */
+	public ServerAliveChecker(Server server) {
+		this.periodInMillis = CloudServer.getInstance().getNetworkConfig().map(NetworkConfig::getAliveEventPeriodInMillis).orElse(10000L);
+		this.eventOnTimerRuns = CloudServer.getInstance().getNetworkConfig().map(NetworkConfig::getStartSendingAliveEventOnTimerRuns).orElse(30);
+		this.server = Objects.requireNonNull(server);
+		this.aliveOrdinal = 0;
+		timer = new Timer();
+		timer.schedule(this, Math.max(20000, periodInMillis * 2), periodInMillis);
+	}
 
-    /**
-     * The action to be performed by this timer task.
-     */
-    @Override
-    public void run() {
-        if (server.isStopped()) {
-            log.warn("Server seems to be stopped, but alive checker was not removed... Stopping timer.");
-            stopTimer();
-            return;
-        }
-        if (!server.isRunning()) {
-            log.warn("Process of server '{}' could not be found. Assuming is not running anymore", server.getServerId());
-            server.clientDisconnected();
-            return;
-        }
+	/**
+	 * The action to be performed by this timer task.
+	 */
+	@Override
+	public void run() {
+		if (server.isStopped()) {
+			log.warn("Server seems to be stopped, but alive checker was not removed... Stopping timer.");
+			stopTimer();
+			return;
+		}
+		if (!server.isRunning()) {
+			log.warn("Process of server '{}' could not be found. Assuming is not running anymore", server.getServerId());
+			server.clientDisconnected();
+			return;
+		}
 
-        if (aliveOrdinal == eventOnTimerRuns) {
-            log.debug("Sending normal alive request after {}*{}ms.", periodInMillis, eventOnTimerRuns);
-            CloudServer.getInstance().getClientHandler().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST));
-        } else if (aliveOrdinal == eventOnTimerRuns + 1) {
-            log.warn("{} did not response in {} s. Sending last response request...", server.getServerId(), periodInMillis * aliveOrdinal / 1000);
-            CloudServer.getInstance().getClientHandler().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST));
-        } else {
-            log.warn("{} did not response in {} s. Flushing server...", server.getServerId(), periodInMillis * aliveOrdinal / 1000);
-            server.flushServer();
-            stopTimer();
-        }
+		if (aliveOrdinal == eventOnTimerRuns) {
+			log.debug("Sending normal alive request to {} after {} s.", server.getServerId(), periodInMillis * aliveOrdinal / 1000);
+			CloudServer.getInstance().getClientHandler().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST));
+		} else if (aliveOrdinal == eventOnTimerRuns + 1) {
+			log.warn("{} did not response in {} s. Sending last response request...", server.getServerId(), periodInMillis * aliveOrdinal / 1000);
+			CloudServer.getInstance().getClientHandler().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST));
+		} else {
+			log.warn("{} did not response in {} s. Flushing server...", server.getServerId(), periodInMillis * aliveOrdinal / 1000);
+			server.flushServer();
+			stopTimer();
+		}
 
-        this.aliveOrdinal++;
-    }
+		this.aliveOrdinal++;
+	}
 
-    protected void stopTimer() {
-        timer.cancel();
-    }
+	public void stopTimer() {
+		timer.cancel();
+	}
 
-    public void receivedEvent() {
-        aliveOrdinal = 0; // wird erst nach * DELAY anfangen zu senden
-    }
+	public void receivedEvent() {
+		aliveOrdinal = 0;
+	}
 }
