@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.server.ServerType;
+import net.fununity.cloud.common.util.SystemConstants;
 import net.fununity.cloud.server.CloudServer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -39,23 +40,17 @@ public class ConfigHandler {
 	private final List<ServerConfig> serverConfig;
 	@NotNull
 	private final Path configPath;
-	@Nullable
-	private final String repoUsername;
-	@Nullable
-	private final String repoPassword;
 
 
-	public ConfigHandler(String... args) {
+	public ConfigHandler() {
 		this.pluginConfig = new ArrayList<>();
 		this.serverConfig = new LinkedList<>();
 		this.configPath = Path.of("network-configuration.json");
-		log.debug("Boot up ConfigHandler...");
+		log.debug("Booting up ConfigHandler...");
 		checkAndCreateDefaultConfig();
 		loadNetworkConfig();
 
 		String customServers = System.getProperty("customServers");
-		this.repoUsername = System.getProperty("repo.username");
-		this.repoPassword = System.getProperty("repo.password");
 
 		if (customServers == null) {
 			startDefaultServers();
@@ -97,7 +92,12 @@ public class ConfigHandler {
 			this.networkConfig = objectMapper.readValue(configPath.toFile(), new TypeReference<>() {
 			});
 
-			this.networkConfig.setEnableRepositoryManager(networkConfig.isEnableRepositoryManager() && this.repoPassword != null && this.repoUsername != null);
+			if (networkConfig.isEnableRepositoryManager() &&
+			    (System.getProperty(SystemConstants.PROP_NEXUS_USER) == null ||
+			     System.getProperty(SystemConstants.PROP_NEXUS_PASSWORD) == null)) {
+				this.networkConfig.setEnableRepositoryManager(false);
+				log.warn("Credentials for Nexus Repository Manager is not set. Disabling repository manager.");
+			}
 			this.pluginConfig.clear();
 			this.pluginConfig.addAll(networkConfig.getPluginConfigs());
 			this.serverConfig.clear();
@@ -122,7 +122,7 @@ public class ConfigHandler {
 	}
 
 	public void startDefaultServers() {
-		log.info("Starting servers: {}", serverConfig.stream().filter(s -> s.getAmountOnStartup() > 0).map(s -> s.getServerType() + ": " + s.getAmountOnStartup()).collect(Collectors.joining(", ")));
+		log.info("Starting default servers: {}", serverConfig.stream().filter(s -> s.getAmountOnStartup() > 0).map(s -> s.getServerType() + ": " + s.getAmountOnStartup()).collect(Collectors.joining(", ")));
 		for (ServerConfig server : serverConfig) {
 			if (server.getAmountOnStartup() > 0) {
 				for (int i = 0; i < server.getAmountOnStartup(); i++)

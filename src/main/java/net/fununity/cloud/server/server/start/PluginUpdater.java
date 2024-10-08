@@ -2,7 +2,7 @@ package net.fununity.cloud.server.server.start;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.fununity.cloud.common.util.EnvironmentVariables;
+import net.fununity.cloud.common.util.SystemConstants;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedInputStream;
@@ -122,15 +122,15 @@ public class PluginUpdater {
 	}
 
 	private void setConnectionAuthentication(@NotNull HttpURLConnection connection) {
-		String user = System.getenv(EnvironmentVariables.NEXUS_USER_NAME);
-		String pw = System.getenv(EnvironmentVariables.NEXUS_USER_PASSWORD);
+		String user = System.getProperty(SystemConstants.PROP_NEXUS_USER);
+		String pw = System.getProperty(SystemConstants.PROP_NEXUS_PASSWORD);
 		if (user != null && pw != null) {
-			String encodedAuth = Base64.getEncoder().encodeToString(String.format(
-					"%s:%s", user, pw
-			).getBytes(StandardCharsets.UTF_8));
-			connection.setRequestProperty("Authorization", "Basic " + encodedAuth);
+			connection.setRequestProperty("Authorization",
+					"Basic " + Base64.getEncoder().encodeToString(String.format(
+							"%s:%s", user, pw
+					).getBytes(StandardCharsets.UTF_8)));
 		} else {
-			log.warn("User and password variables are missing. Skipping connection authentication");
+			log.warn("User and password properties are missing. Skipping connection authentication");
 		}
 	}
 

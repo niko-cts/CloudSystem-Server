@@ -4,22 +4,18 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.VersionCmd;
 import com.github.dockerjava.api.model.*;
-import com.github.dockerjava.core.DefaultDockerClientConfig;
-import com.github.dockerjava.core.DockerClientConfig;
-import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.google.common.base.Preconditions;
 import lombok.extern.slf4j.Slf4j;
-import net.fununity.cloud.common.util.EnvironmentVariables;
+import net.fununity.cloud.common.util.SystemConstants;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.config.PluginConfig;
 import net.fununity.cloud.server.server.Server;
+import net.fununity.cloud.server.util.DockerUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -35,7 +31,7 @@ import java.util.stream.Stream;
 @Slf4j
 public class ServerStarter {
 
-	private static final int INTERNAL_PORT = 25565;
+	private static final int DEFAULT_PORT = 25565;
 
 	private final Server server;
 	private final String imageName;
@@ -60,31 +56,52 @@ public class ServerStarter {
 
 
 	public void loadPluginsAndStartServerDockerized() {
-		DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().withDockerHost("unix:///var/run/docker.sock")  // For Linux/macOS
-				// .withDockerHost("tcp://localhost:2375")    // Uncomment for Windows Docker setup
-				.build();
-		ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost()).sslConfig(config.getSSLConfig()).maxConnections(100).connectionTimeout(Duration.ofSeconds(30)).responseTimeout(Duration.ofSeconds(45)).build();
+		this.dockerClient = DockerUtil.createDockerClient();
 
-		this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
+		logDockerVersion();
+
+		updatePlugins().thenRun(this::checkPluginsAndPort)
+				.thenRun(this::checkOrCreateNetwork)
+				.thenRun(this::checkOrCreateImage)
+				.thenApply(unused -> checkOrCreateContainer())
+				.thenAccept(this::startContainer)
+				.whenComplete(this::handleCompletion);
+	}
+
+	private void logDockerVersion() {
 		VersionCmd versionCmd = dockerClient.versionCmd();
 		log.debug("Docker version: {}", versionCmd.exec().getVersion());
+	}
 
-		updatePlugins().thenRun(this::checkPluginsAndPort).thenRun(this::checkOrCreateNetwork).thenRun(this::checkOrCreateImage).thenApply(unused -> checkOrCreateContainer()).thenAccept(this::startContainer).whenComplete((ignored, throwable) -> {
+	private void handleCompletion(Void ignored, Throwable throwable) {
+		try {
 			if (throwable != null) {
 				log.error(String.format("Error while creating Server %s on port %s. Will not start, because:", containerName, port), throwable);
-				server.flushServer();
+				server.stop();
 			} else {
 				log.info("Server started: {}", server);
 			}
+		} finally {
+			closeDockerClient();
+		}
+	}
+
+	private void closeDockerClient() {
+		if (dockerClient != null) {
 			try {
-				if (dockerClient != null) this.dockerClient.close();
+				dockerClient.close();
 			} catch (IOException e) {
 				log.error("Could not close docker client", e);
 			}
-		});
+		}
 	}
 
 	private CompletableFuture<Void> updatePlugins() {
+		if (CloudServer.getInstance().getNetworkConfig().map(cfg -> !cfg.isEnableRepositoryManager()).orElse(true)) {
+			log.debug("Skipping plugin update checking, because repository manager is disabled.");
+			return CompletableFuture.completedFuture(null);
+		}
+
 		List<PluginUpdater> jarUpdaters = plugins.stream().map(plugin -> new PluginUpdater(new File(plugin.getLocalPath()), plugin.getNexusPluginUrl())).toList();
 		CompletableFuture<?>[] futures = new CompletableFuture[jarUpdaters.size()];
 
@@ -92,7 +109,7 @@ public class ServerStarter {
 			PluginUpdater updater = jarUpdaters.get(i);
 
 			futures[i] = CompletableFuture.runAsync(updater::checkAndUpdateJar).exceptionally(ex -> {
-				log.error("Error updating jar: {}", updater.pluginFile, ex);
+				log.warn("Error updating jar: {}", updater.pluginFile, ex);
 				return null;
 			});
 		}
@@ -114,7 +131,7 @@ public class ServerStarter {
 			throw new RuntimeException("No plugin loaded for server type " + imageName);
 		}
 
-		if (this.port < INTERNAL_PORT)
+		if (this.port < DEFAULT_PORT)
 			throw new RuntimeException("Given port for server " + containerName + " is below default port 25565: " + this.port);
 	}
 
@@ -126,10 +143,8 @@ public class ServerStarter {
 			return containerId.get();
 		}
 
-		// Define the exposed port
 		ExposedPort exposedPort = ExposedPort.tcp(port);
 
-		// Bind files from host to the container
 		List<Bind> binds = plugins.stream().map(plugin -> new Bind(new File(plugin.getLocalPath()).getAbsolutePath(), new Volume("/plugins/" + new File(plugin.getLocalPath()).getName()))).collect(Collectors.toList());
 
 		binds.add(new Bind(templateDir.getPath() + "/../logs/" + imageName + "/" + containerName, new Volume("/logs/latest.txt")));
@@ -145,8 +160,8 @@ public class ServerStarter {
 		}
 
 		HostConfig hostConfig = HostConfig.newHostConfig()
-				.withPortBindings(new PortBinding(Ports.Binding.bindPort(INTERNAL_PORT), exposedPort))
-				.withNetworkMode(EnvironmentVariables.NETWORK_NAME)
+				.withPortBindings(new PortBinding(Ports.Binding.bindPort(DEFAULT_PORT), exposedPort))
+				.withNetworkMode(SystemConstants.NETWORK_NAME)
 				.withBinds(binds);
 
 
@@ -156,11 +171,11 @@ public class ServerStarter {
 				.withName(containerName)
 				.withHostConfig(hostConfig)
 				.withExposedPorts(exposedPort)
-				.withEnv(String.format("%s=%s", EnvironmentVariables.CONTAINER_NAME, containerName))  // Set CONTAINER_NAME environment variable
+				.withEnv(String.format("%s=%s", SystemConstants.ENV_CONTAINER_NAME, containerName))  // Set CONTAINER_NAME environment variable
 				.exec();
 
 
-		log.debug("Container {} created with ID {} on network {}.", containerName, container.getId(), EnvironmentVariables.NETWORK_NAME);
+		log.debug("Container {} created with ID {} on network {}.", containerName, container.getId(), SystemConstants.NETWORK_NAME);
 		return container.getId();
 
 	}
@@ -179,7 +194,6 @@ public class ServerStarter {
 
 		try {
 			dockerClient.buildImageCmd(templateDir).withTags(Set.of(imageName)).start().awaitCompletion();
-
 			log.debug("Image {} successfully built from {}", imageName, templateDir.getPath());
 		} catch (InterruptedException e) {
 			throw new RuntimeException("Could not create docker image of " + imageName, e);
@@ -199,12 +213,12 @@ public class ServerStarter {
 
 	private void checkOrCreateNetwork() {
 		if (doesNetworkExist()) {
-			log.debug("Network {} already exists.", EnvironmentVariables.NETWORK_NAME);
+			log.debug("Network {} already exists. Skipping creation.", SystemConstants.NETWORK_NAME);
 			return;
 		}
 
-		dockerClient.createNetworkCmd().withName(EnvironmentVariables.NETWORK_NAME).exec();
-		log.debug("Network {} created.", EnvironmentVariables.NETWORK_NAME);
+		dockerClient.createNetworkCmd().withName(SystemConstants.NETWORK_NAME).exec();
+		log.debug("Network {} created.", SystemConstants.NETWORK_NAME);
 	}
 
 
@@ -212,6 +226,6 @@ public class ServerStarter {
 	 * Check if the Docker network exists
 	 */
 	private boolean doesNetworkExist() {
-		return dockerClient.listNetworksCmd().exec().stream().anyMatch(network -> network.getName().equals(EnvironmentVariables.NETWORK_NAME));
+		return dockerClient.listNetworksCmd().exec().stream().anyMatch(network -> network.getName().equals(SystemConstants.NETWORK_NAME));
 	}
 }

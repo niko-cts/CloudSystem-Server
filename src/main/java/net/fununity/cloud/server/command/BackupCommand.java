@@ -2,8 +2,6 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.server.command.handler.Command;
 
-import java.io.IOException;
-
 /**
  * The backup command of the cloud.
  * @see net.fununity.cloud.server.server.Server
@@ -32,12 +30,8 @@ public class BackupCommand extends Command {
 			return;
 		}
 		getServerIdOrSendIllegal(args[0], server -> {
-			// TODO
-			try {
-				server.moveToBackup(true);
-			} catch (IOException e) {
-				log.error("Error while try to backup server:", e);
-			}
+			// TODO Discuss whether to implement this or not
+			log.info("not implemented yet");
 		});
 	}
 }

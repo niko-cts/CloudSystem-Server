@@ -2,7 +2,7 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.server.util.ServerUtils;
+import net.fununity.cloud.server.util.ServerUtils;
 
 public class RestartCommand extends Command {
 

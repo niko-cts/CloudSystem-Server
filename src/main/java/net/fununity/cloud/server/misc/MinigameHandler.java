@@ -7,9 +7,8 @@ import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.config.ServerConfig;
 import net.fununity.cloud.server.netty.listeners.GeneralEventListener;
 import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.ServerHandler;
-import net.fununity.cloud.server.server.util.EventSendingHelper;
-import net.fununity.cloud.server.server.util.ServerUtils;
+import net.fununity.cloud.server.util.EventSendingHelper;
+import net.fununity.cloud.server.util.ServerUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -98,8 +97,11 @@ public class MinigameHandler {
 	 * @since 0.0.1
 	 */
 	private void checkToAdd(int lobbies, ServerType serverType) {
-		if (ServerUtils.getCurrentRamUsed() > ServerHandler.MAX_RAM)
+		int maxRam = CloudServer.getInstance().getMaxRam();
+		if (ServerUtils.getCurrentRamUsed() >= maxRam) {
+			log.warn("Can not start {} because maximum ram of {}M is currently used by all servers.", serverType, maxRam);
 			return;
+		}
 
 		if (lobbies + startingServer < CloudServer.getInstance().getConfigHandler()
 				.getByServerConfigByType(serverType).map(ServerConfig::getMinimumAmount).orElse(3)) {

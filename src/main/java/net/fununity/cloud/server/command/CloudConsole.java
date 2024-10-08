@@ -55,6 +55,7 @@ public class CloudConsole implements Runnable {
                     .parser(new DefaultParser())
                     .build();
 
+            log.info("Type 'help' for help.");
             while (!exit) {
                 try {
                     String line = lineReader.readLine("> ");

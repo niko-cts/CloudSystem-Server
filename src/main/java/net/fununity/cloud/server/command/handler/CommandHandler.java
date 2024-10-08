@@ -19,10 +19,10 @@ public class CommandHandler {
      * @since 0.0.1
      */
     public CommandHandler(Logger logger) {
-        this.commandList = Arrays.asList(new HelpCommand(), new ServerTypeCommand(), new ListCommand(), new StopCommand(), new BackupCommand(), new DebugCommand(),
-                new RestartCommand(), new InfoCommand(), new StartCommand(), new ExpireCommand(), new ValidateCommand(), new RemoveServerCommand(), new ExitCommand());
+        this.commandList = Arrays.asList(new HelpCommand(), new ServerTypeCommand(), new ListCommand(), new StopCommand(), new BackupCommand(),
+                new RestartCommand(), new InfoCommand(), new StartCommand(), new ExpireCommand(), new ValidateCommand(), new ExitCommand());
         this.log = logger;
-
+        log.debug("Registered {} commands.", commandList.size());
     }
 
     /**

@@ -1,4 +1,4 @@
-package net.fununity.cloud.server.server.util;
+package net.fununity.cloud.server.util;
 
 import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerType;

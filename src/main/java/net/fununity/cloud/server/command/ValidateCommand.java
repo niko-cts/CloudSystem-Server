@@ -2,7 +2,6 @@ package net.fununity.cloud.server.command;
 
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.command.handler.Command;
-import net.fununity.cloud.server.server.ServerHandler;
 
 /**
  * Command class to call {@link ServerHandler#validate(ServerType)}.

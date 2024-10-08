@@ -1,6 +1,7 @@
-package net.fununity.cloud.server.server.util;
+package net.fununity.cloud.server.util;
 
 import lombok.extern.slf4j.Slf4j;
+import net.fununity.cloud.common.events.cloud.CloudEvent;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.config.NetworkConfig;
@@ -12,8 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -188,4 +188,47 @@ public class ServerUtils {
 		return MANAGER.getAllServers().stream().mapToInt(s -> s.getConfig().getRam()).sum();
 	}
 
+	/**
+	 * Gets the serverId of the lobby with the lowest player count.
+	 *
+	 * @param blacklist Server[] - Server, which cannot be taken.
+	 * @return Server - the server of the lobby.
+	 * @since 0.0.1
+	 */
+	public static Server getSuitableLobby(Server... blacklist) {
+		List<Server> blacklistServers = Arrays.asList(blacklist);
+		return getLobbyServers().stream()
+				.filter(server -> !blacklistServers.contains(server))
+				.filter(server -> server.getPlayerCount() + 1 < server.getMaxPlayers())
+				.max(Comparator.comparing(Server::getPlayerCount)).orElse(null);
+	}
+
+	/**
+	 * Sends player to a lobby.
+	 *
+	 * @param blackListLobbies List<Server> - The lobbies the player cannot be sent
+	 * @param sendingPlayers   Queue<UUID> - A queue of players which should be sent.
+	 * @since 0.0.1
+	 */
+	public static void sendPlayerToLobby(List<Server> blackListLobbies, Queue<UUID> sendingPlayers) {
+		Server lobby = getSuitableLobby(blackListLobbies.toArray(new Server[0]));
+
+		if (lobby == null) {
+			log.warn("No suitable lobby to send player: {}", sendingPlayers);
+			return;
+		}
+
+		CloudEvent event = new CloudEvent(CloudEvent.BUNGEE_SEND_PLAYER).addData(lobby.getServerId());
+
+		int canBeMoved = lobby.getMaxPlayers() - lobby.getPlayerCount() - 1;
+		for (int i = 0; i < sendingPlayers.size() && i < canBeMoved; i++)
+			event.addData(sendingPlayers.poll());
+
+		EventSendingHelper.sendToBungeeCord(event);
+
+		if (!sendingPlayers.isEmpty()) {
+			blackListLobbies.add(lobby);
+			sendPlayerToLobby(blackListLobbies, sendingPlayers);
+		}
+	}
 }

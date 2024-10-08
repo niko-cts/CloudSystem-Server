@@ -1,10 +1,14 @@
 package net.fununity.cloud.server.server.shutdown;
 
+import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.core.DockerClientBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.events.cloud.CloudEvent;
+import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.server.Server;
-import net.fununity.cloud.server.server.util.EventSendingHelper;
+import net.fununity.cloud.server.util.DockerUtil;
+import net.fununity.cloud.server.util.EventSendingHelper;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -12,6 +16,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+
+/**
+ * Class responsible for stopping the server and handling related processes.
+ *
+ * @author Niko
+ */
 @Slf4j
 public class ServerStopper {
 
@@ -22,43 +32,60 @@ public class ServerStopper {
 	private static final int SHUTDOWN_TIMEOUT = 10;
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
-	// Simulate asynchronous response listeners
 	private final CompletableFuture<Void> bungeeResponse;
 	private final CompletableFuture<Void> clientDisconnected;
 
 	private final Server server;
+	boolean shuttingDown;
 
+	/**
+	 * Constructor for ServerStopper.
+	 *
+	 * @param server The server instance to be stopped.
+	 */
 	public ServerStopper(Server server) {
 		this.server = server;
+		shuttingDown = false;
 		bungeeResponse = new CompletableFuture<>();
 		clientDisconnected = new CompletableFuture<>();
 	}
 
-	boolean shuttingDown = false;
 
+	/**
+	 * Initiates the server shutdown process.
+	 * This includes sending removal requests to BungeeCord, sending shutdown commands to the client,
+	 * and stopping and removing the Docker container.
+	 */
 	public void shutdownServer() {
+		if (shuttingDown) return;
 		shuttingDown = true;
+		server.stopAliveChecker();
 		sendRemoveToBungee()
-				.thenComposeAsync(unused -> sendClientShutdown())
-				.thenComposeAsync(unused -> killContainer())
-				.thenComposeAsync(unused -> removeContainer())
-				.thenComposeAsync(unused -> postShutdownActions())
+				.thenRun(this::sendClientShutdown)
+				.thenRun(this::stopOrKillContainer)
+				.thenRun(this::removeContainer)
 				.exceptionally(throwable -> {
 					log.warn("Unhandled error while stopping server {}: ", server.getServerId(), throwable);
 					return null;
-				})
-				.join();
+				}).join();
+
 		log.info("Server {} shutdown process completed.", server.getServerId());
-		scheduler.shutdown();
+		server.setServerState(ServerState.IDLE);
+		scheduler.shutdownNow();
+		CloudServer.getInstance().getServerManager().serverCompletelyStopped(server);
 	}
 
-	// Task 1: Send remove request and handle response or timeout (2 seconds)
+	/**
+	 * Sends a request to BungeeCord to remove the server and handles the response or timeout.
+	 *
+	 * @return A CompletableFuture that completes when the response is received or the timeout occurs.
+	 */
 	private CompletableFuture<Void> sendRemoveToBungee() {
 		if (bungeeRemovedServer.get()) {
-			log.info("Skipping remove bungee request as already completed.");
+			log.debug("Skipping remove bungee request as already completed.");
 			return CompletableFuture.completedFuture(null);
 		}
-		log.info("Sending remove request to bungee...");
+		log.debug("Sending remove request to bungee...");
 		EventSendingHelper.sendToBungeeCord(new CloudEvent(CloudEvent.BUNGEE_SERVER_REMOVE_REQUEST).addData(server.getServerId()));
 
 		scheduler.schedule(() -> {
@@ -76,11 +103,13 @@ public class ServerStopper {
 		});
 	}
 
-	// Task 2: Send shutdown request and handle response or timeout (5 seconds)
-	private CompletableFuture<Void> sendClientShutdown() {
+	/**
+	 * Sends a shutdown request to the client and handles the response or timeout.
+	 */
+	private void sendClientShutdown() {
 		if (clientShutdown.get()) {
 			log.debug("Skipping server shutdown as server disconnected itself.");
-			return CompletableFuture.completedFuture(null);
+			return;
 		}
 
 		log.debug("Sending shutdown request to server...");
@@ -92,50 +121,43 @@ public class ServerStopper {
 				clientDisconnected.complete(null); // Complete after timeout
 			}
 		}, SHUTDOWN_TIMEOUT, TimeUnit.SECONDS);
-
-		return clientDisconnected;
 	}
 
-	// Task 3: Remove or kill the Docker container
-	private CompletableFuture<Void> killContainer() {
-		return CompletableFuture.runAsync(() -> {
-			if (!clientShutdown.get()) {
-				log.info("Killing docker container {} because of no server response.", server.getServerId());
+	/**
+	 * Stops the Docker container associated with the server.
+	 */
+	private void stopOrKillContainer() {
+		log.debug("Stopping docker container {}", server.getServerId());
 
-				// TODO
-
-			} else {
-				log.debug("No need to kill docker container, server shutdown normally.");
+		try (DockerClient dockerClient = DockerUtil.createDockerClient()) {
+			dockerClient.stopContainerCmd(server.getServerId()).exec();
+			log.debug("Docker container {} stopped successfully.", server.getServerId());
+		} catch (Exception e) {
+			log.warn("Error while stopping Docker container {}. Attempting to kill it.", server.getServerId(), e);
+			try (DockerClient dockerClient = DockerClientBuilder.getInstance().build()) {
+				dockerClient.killContainerCmd(server.getServerId()).exec();
+				log.info("Docker container {} killed successfully.", server.getServerId());
+			} catch (Exception killException) {
+				log.warn("Error while killing Docker container {} ", server.getServerId(), killException);
 			}
-		}).handle((unused, throwable) -> {
-			if (throwable != null) {
-				log.warn("Error while killing/removing Docker container {} ", server.getServerId(), throwable);
-			}
-			return null;
-		});
+		}
 	}
 
-	private CompletableFuture<Void> removeContainer() {
-		return CompletableFuture.runAsync(() -> {
-			log.info("Removing Docker container {}.", server.getServerId());
-			// TODO Docker container removal logic here
-		});
+	/**
+	 * Removes the Docker container associated with the server.
+	 */
+	private void removeContainer() {
+		log.debug("Removing Docker container {}.", server.getServerId());
+		try (DockerClient dockerClient = DockerUtil.createDockerClient()) {
+			dockerClient.removeContainerCmd(server.getServerId()).exec();
+		} catch (Exception e) {
+			log.warn("Error while removing Docker container {} ", server.getServerId(), e);
+		}
 	}
 
-
-	// Task 4: Post-action cleanup
-	private CompletableFuture<Void> postShutdownActions() {
-		return CompletableFuture.runAsync(() -> {
-			log.info("Performing post-action cleanup...");
-			// Cleanup logic here
-		}).handle((unused, throwable) -> {
-			if (throwable != null) {
-				log.warn("Error during post-action cleanup: ", throwable);
-			}
-			return null;
-		});
-	}
-
+	/**
+	 * Handles the response from BungeeCord indicating the server has been removed.
+	 */
 	public void bungeecordRemovedServer() {
 		if (!bungeeResponse.isDone()) {
 			log.debug("Received server {} removed response from bungeecord.", server.getServerId());
@@ -146,6 +168,10 @@ public class ServerStopper {
 		}
 	}
 
+
+	/**
+	 * Handles the response from the client indicating it has disconnected.
+	 */
 	public void clientDisconnected() {
 		if (!clientDisconnected.isDone()) {
 			log.info("Received disconnect response from server {}.", server.getServerId());
@@ -155,5 +181,4 @@ public class ServerStopper {
 				shutdownServer();
 		}
 	}
-
 }

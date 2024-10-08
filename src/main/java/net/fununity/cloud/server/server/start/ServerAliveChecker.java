@@ -68,8 +68,8 @@ public class ServerAliveChecker extends TimerTask {
 			CloudServer.getInstance().getClientHandler().sendEvent(server, new CloudEvent(CloudEvent.CLIENT_ALIVE_REQUEST));
 		} else {
 			log.warn("{} did not response in {} s. Flushing server...", server.getServerId(), periodInMillis * aliveOrdinal / 1000);
-			server.flushServer();
-			stopTimer();
+			timer.cancel();
+			server.stop();
 		}
 
 		this.aliveOrdinal++;

@@ -9,8 +9,8 @@ import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.netty.ClientHandler;
 import net.fununity.cloud.server.server.Server;
 import net.fununity.cloud.server.server.ServerManager;
-import net.fununity.cloud.server.server.util.EventSendingHelper;
-import net.fununity.cloud.server.server.util.ServerUtils;
+import net.fununity.cloud.server.util.EventSendingHelper;
+import net.fununity.cloud.server.util.ServerUtils;
 
 import java.util.List;
 

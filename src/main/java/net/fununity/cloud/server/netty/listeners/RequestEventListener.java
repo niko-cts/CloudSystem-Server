@@ -7,11 +7,10 @@ import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.CloudServer;
 import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.netty.ClientHandler;
-import net.fununity.cloud.server.server.ServerHandler;
 import net.fununity.cloud.server.server.ServerManager;
 import net.fununity.cloud.server.server.shutdown.ServerShutdown;
-import net.fununity.cloud.server.server.util.EventSendingHelper;
-import net.fununity.cloud.server.server.util.ServerUtils;
+import net.fununity.cloud.server.util.EventSendingHelper;
+import net.fununity.cloud.server.util.ServerUtils;
 
 import java.util.*;
 
@@ -31,9 +30,11 @@ public class RequestEventListener extends AbstractEventListener {
 			case CloudEvent.REQ_SERVER_INFO -> {
 				int port = Integer.parseInt(String.valueOf(cloudEvent.getData().getFirst()));
 
-				MANAGER.getServerDefinition(port).ifPresentOrElse(
-						def -> CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def)),
-						() -> log.warn("Could not send server definition for port {}", port));
+				ServerUtils.getServerIdentifierByPort(port)
+						.flatMap(MANAGER::getServerByIdentifier)
+						.map(MANAGER::getServerDefinition).ifPresentOrElse(
+								def -> CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.RES_SERVER_INFO).addData(def)),
+								() -> log.warn("Could not send server definition for port {}", port));
 			}
 
 			case CloudEvent.REQ_SERVER_CREATE_BY_TYPE ->
@@ -84,7 +85,7 @@ public class RequestEventListener extends AbstractEventListener {
 				Queue<UUID> queue = new LinkedList<>();
 				for (int i = 0; i < cloudEvent.getData().size() - 1; i++)
 					queue.add((UUID) cloudEvent.getData().get(i));
-				ServerHandler.getInstance().sendPlayerToLobby(new ArrayList<>(), queue);
+				ServerUtils.sendPlayerToLobby(new ArrayList<>(), queue);
 			}
 			case CloudEvent.REQ_MINIGAME_RESEND_STATUS ->
 					EventSendingHelper.sendMinigameInformationToLobby(String.valueOf(cloudEvent.getData().getFirst()));

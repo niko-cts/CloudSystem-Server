@@ -3,13 +3,13 @@ package net.fununity.cloud.server.server;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.fununity.cloud.common.server.ServerDefinition;
+import net.fununity.cloud.common.server.ServerState;
 import net.fununity.cloud.common.server.ServerType;
 import net.fununity.cloud.server.CloudServer;
-import net.fununity.cloud.server.config.NetworkConfig;
 import net.fununity.cloud.server.misc.MinigameHandler;
 import net.fununity.cloud.server.server.shutdown.ServerShutdown;
-import net.fununity.cloud.server.server.util.EventSendingHelper;
-import net.fununity.cloud.server.server.util.ServerUtils;
+import net.fununity.cloud.server.util.EventSendingHelper;
+import net.fununity.cloud.server.util.ServerUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,7 +64,7 @@ public class ServerManager {
 		else
 			serverName += nextNumber;
 
-		log.debug("Create new server '{}' by type '{}'", serverName, serverType.name());
+		log.debug("Creating new server named '{}' by type '{}'", serverName, serverType.name());
 		requestStartServer(new Server(serverName, "127.0.0.1", serverType));
 	}
 
@@ -73,7 +73,7 @@ public class ServerManager {
 			log.warn("Could not add server, because it is already in the list {}", server.getServerId());
 			return;
 		}
-		int maxRam = CloudServer.getInstance().getNetworkConfig().map(NetworkConfig::getMaxRam).orElse(0);
+		int maxRam = CloudServer.getInstance().getMaxRam();
 		if (ServerUtils.getCurrentRamUsed() >= maxRam) {
 			log.warn("Can not start {} because maximum ram of {}M is currently used by all servers.", server.getServerId(), maxRam);
 			return;
@@ -89,6 +89,7 @@ public class ServerManager {
 	public void serverCompletelyStarted(Server server) {
 		log.info("Server {} has started.", server.getServerId());
 		startQueue.remove(server);
+		server.setServerState(ServerState.RUNNING);
 		runningServers.add(server);
 		if (server.isMarkedForStop())
 			requestStopServer(server);
@@ -149,7 +150,7 @@ public class ServerManager {
 
 	public ServerDefinition getServerDefinition(Server server) {
 		return new ServerDefinition(server.getServerId(), server.getServerName(), server.getServerIp(), server.getServerPort(),
-						server.getConfig().getRam(), server.getPlayerCount(), server.getMaxPlayers(), server.getConfig().getServerType());
+				server.getConfig().getRam(), server.getPlayerCount(), server.getMaxPlayers(), server.getConfig().getServerType());
 	}
 
 	/**

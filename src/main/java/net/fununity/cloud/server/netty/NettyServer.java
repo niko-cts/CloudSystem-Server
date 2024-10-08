@@ -42,7 +42,7 @@ public class NettyServer implements Runnable {
 						}
 					});
 			ChannelFuture channelFuture = bootstrap.bind().sync();
-			log.info("Server started on {}:{}", hostname, port);
+			log.info("Cloud Server is listening on {}:{}", hostname, port);
 			channelFuture.channel().closeFuture().sync();
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
