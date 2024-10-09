@@ -51,7 +51,7 @@ public abstract class Command {
 	public abstract void execute(String[] args);
 
 	public void sendCommandUsage() {
-		log.info("{} - {}", getUsage(), getDescription());
+		log.warn("Illegal command usage: {} - {}", getUsage(), getDescription());
 	}
 
 	public void sendIllegalServerType() {

@@ -22,7 +22,7 @@ public class HelpCommand extends Command {
     public void execute(String[] args) {
         log.info("All Commands listed below:");
         for (Command command : CloudServer.getInstance().getCloudConsole().getCommandHandler().getCommands()) {
-            command.sendCommandUsage();
+           log.info("{} - {}", command.getName(), command.getDescription());
         }
     }
 }

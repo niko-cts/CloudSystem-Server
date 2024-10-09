@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -14,6 +15,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class LogFileCleanerUtil {
 
+	public static final String DATE_PATTERN = "yyyy-MM-dd";
 	@NotNull
 	private final File directory;
 	private final OffsetDateTime deleteBefore;
@@ -29,15 +31,17 @@ public class LogFileCleanerUtil {
 			if (file.getName().endsWith(".log")) {
 				String[] s = file.getName().split(" ");
 				try {
-					OffsetDateTime fileDateTime = OffsetDateTime.parse(s[0], DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+					String dateAndTime = s[0].split("_")[0];
+					log.debug("Attempting to parse date and time {} by pattern {}", dateAndTime, DATE_PATTERN);
+					LocalDate fileDateTime = LocalDate.parse(dateAndTime, DateTimeFormatter.ofPattern(DATE_PATTERN));
 
-					if (fileDateTime.isBefore(deleteBefore)) {
+					if (fileDateTime.isBefore(deleteBefore.toLocalDate())) {
 						if (file.delete()) {
 							amount++;
 						}
 					}
 				} catch (DateTimeParseException e) {
-					log.warn("Could not parse date from file name: {}", file.getName());
+					log.warn("Could not parse date by pattern {} from file name: {}", DATE_PATTERN, file.getName());
 				}
 			}
 		}
