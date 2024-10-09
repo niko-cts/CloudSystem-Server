@@ -42,10 +42,10 @@ public class ConfigHandler {
 	private final Path configPath;
 
 
-	public ConfigHandler() {
+	public ConfigHandler(Path directory) {
 		this.pluginConfig = new ArrayList<>();
 		this.serverConfig = new LinkedList<>();
-		this.configPath = Path.of("network-configuration.json");
+		this.configPath = directory.resolve("network-configuration.json");
 		log.debug("Booting up ConfigHandler...");
 		checkAndCreateDefaultConfig();
 		loadNetworkConfig();
@@ -54,12 +54,15 @@ public class ConfigHandler {
 
 		if (customServers == null) {
 			startDefaultServers();
+		} else if (List.of("none", "null", "no", "off").contains(customServers.toLowerCase())) {
+			log.info("No servers will start on boot. (Custom servers: {})", customServers);
 		} else {
+			log.info("Starting custom servers: {}", customServers);
 			for (String server : customServers.split(",")) {
 				try {
 					CloudServer.getInstance().getServerManager().createServerByServerType(ServerType.valueOf(server));
 				} catch (IllegalArgumentException exception) {
-					log.error("Could not start server, because illegal servertype: {}", server);
+					log.warn("Could not start server, because illegal servertype: {}", server);
 				}
 
 			}
@@ -74,9 +77,8 @@ public class ConfigHandler {
 	private void checkAndCreateDefaultConfig() {
 		if (!Files.exists(configPath)) {
 			log.debug("Default network config does not exist. Copying jar...");
-
-			try (InputStream fileStream = Objects.requireNonNull(getClass().getResourceAsStream("resources/network-configuration.json"))) {
-				Files.createDirectories(configPath.getParent());
+			try (InputStream fileStream = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResourceAsStream("network-configuration.json"))) {
+				Files.createDirectories(configPath);
 				Files.copy(fileStream, configPath, StandardCopyOption.REPLACE_EXISTING);
 				log.info("Default network config created.");
 			} catch (IOException e) {
@@ -99,9 +101,11 @@ public class ConfigHandler {
 				log.warn("Credentials for Nexus Repository Manager is not set. Disabling repository manager.");
 			}
 			this.pluginConfig.clear();
-			this.pluginConfig.addAll(networkConfig.getPluginConfigs());
+			if (networkConfig.getPluginConfigs() != null)
+				this.pluginConfig.addAll(networkConfig.getPluginConfigs());
 			this.serverConfig.clear();
-			this.serverConfig.addAll(networkConfig.getServerConfigs().stream().sorted(Comparator.comparing(ServerConfig::getPriority)).toList());
+			if (networkConfig.getServerConfigs() != null)
+				this.serverConfig.addAll(networkConfig.getServerConfigs().stream().sorted(Comparator.comparing(ServerConfig::getPriority)).toList());
 
 			log.debug("Network config-file is: {}", networkConfig);
 			log.debug("Found {} servers", serverConfig.size());

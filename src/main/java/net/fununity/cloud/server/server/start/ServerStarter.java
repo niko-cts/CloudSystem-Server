@@ -147,7 +147,7 @@ public class ServerStarter {
 
 		List<Bind> binds = plugins.stream().map(plugin -> new Bind(new File(plugin.getLocalPath()).getAbsolutePath(), new Volume("/plugins/" + new File(plugin.getLocalPath()).getName()))).collect(Collectors.toList());
 
-		binds.add(new Bind(templateDir.getPath() + "/../logs/" + imageName + "/" + containerName, new Volume("/logs/latest.txt")));
+		binds.add(new Bind(templateDir.toPath()  + "/../logs/" + imageName + "/" + containerName, new Volume("/logs/latest.txt")));
 		if (backup) {
 			Path backupPath = Path.of(templateDir.getAbsolutePath(), "..", "backups", imageName, server.getServerName());
 			try (Stream<Path> paths = Files.walk(backupPath)) {

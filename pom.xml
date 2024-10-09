@@ -34,6 +34,7 @@
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java</artifactId>
             <version>3.4.0</version>
+            <scope>compile</scope>
         </dependency>
         <!-- Transport Dependency for HTTP communication with Docker -->
         <dependency>
@@ -46,6 +47,7 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.5.8</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -86,6 +88,7 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.17.2</version>
+            <scope>compile</scope>
         </dependency>
 
 
@@ -93,6 +96,27 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
             <version>4.1.113.Final</version>
+        </dependency>
+
+
+        <!-- https://mvnrepository.com/artifact/org.mockito/mockito-core -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.12.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.12.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>
@@ -144,11 +168,14 @@
                             <createDependencyReducedPom>true</createDependencyReducedPom>
                             <artifactSet>
                                 <includes>
-                                    <include>log4j</include>
                                     <include>net.fununity.cloud</include>
                                     <include>io.netty</include>
                                     <include>commons-io</include>
+                                    <include>org.slf4j</include>
                                     <include>org.jline</include>
+                                    <include>ch.qos.logback</include>
+                                    <include>com.fasterxml.jackson.core</include>
+                                    <include>com.github.dockerjava</include>
                                 </includes>
                             </artifactSet>
                         </configuration>
@@ -156,6 +183,12 @@
                 </executions>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
     </build>
 
 </project>

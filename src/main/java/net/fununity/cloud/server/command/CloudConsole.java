@@ -33,7 +33,7 @@ public class CloudConsole implements Runnable {
     /**
      * Instantiate this class.
      * Loads the {@link CommandHandler}
-     * Starts the console input via {@link #startTerminal()}
+     * Starts the console input via {@link #run()}
      *
      * @since 0.0.1
      */

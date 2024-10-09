@@ -32,6 +32,7 @@ public class CommandHandler {
      */
     public void tryToExecuteCommand(String[] args) {
         String cmd = args[0];
+        log.debug("Console command: {}", cmd);
         Command command = commandList.stream().filter(c -> c.getName().equalsIgnoreCase(cmd) ||
                 Arrays.stream(c.getAliases()).filter(a -> a.equalsIgnoreCase(cmd)).findFirst().orElse(null) != null).findFirst().orElse(null);
         if (command == null) {

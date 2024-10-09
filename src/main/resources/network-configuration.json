@@ -2,40 +2,42 @@
   "hostname": "127.0.0.1",
   "port": 1337,
   "maxRam": 35200,
+  "playerAmountNewLobbyThreshold": 5,
+  "aliveEventPeriodInMillis": 5000,
+  "startSendingAliveEventOnTimerRuns": 4,
   "hasRepositoryManager": true,
   "servers": [
     {
       "serverType": "BUNGEECORD",
-      "ram": "512M",
+      "ram": "512",
       "directory": "./Servers/Templates/BungeeCord/",
       "amountOnStartup": 1,
+      "minimumAmount": 1,
       "priority": 1,
-      "save": false,
+      "backup": false,
       "plugins": [
-        "CloudSystem-Client", "DatabaseHandler", "TranslationHandler"
+        "CloudSystem-Client"
       ]
     },
     {
       "serverType": "LOBBY",
-      "ram": "1536M",
-      "directory": "./Servers/Templates/Lobby/",
+      "maxPlayers": 20,
+      "ram": "1536",
+      "directory": "./servers/templates/Lobby/",
       "amountOnStartup": 2,
+      "minimumAmount": 2,
       "priority": 2,
-      "save": false,
+      "backup": false,
       "plugins": [
-        "CloudSystem-Client", "DatabaseHandler", "TranslationHandler"
+        "CloudSystem-Client"
       ]
     }
   ],
   "plugins": [
     {
       "name": "CloudSystem-Client",
-      "path": "./Plugins/CloudSystem-Client-MASTER.jar",
-      "nexusUrl": "url",
-      "repositoryId": "fununity-releases",
-      "group": "net.fununity.cloud",
-      "artifactId": "CloudSystem-Client",
-      "version": "MASTER"
+      "localPath": "./plugins/CloudSystem-Client-MASTER.jar",
+      "nexusPluginUrl": "url"
     }
   ]
 }

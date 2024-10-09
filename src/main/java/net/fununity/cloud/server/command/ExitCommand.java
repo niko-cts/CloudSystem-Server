@@ -20,7 +20,7 @@ public class ExitCommand extends Command {
      */
     @Override
     public void execute(String[] args) {
-        log.info("Shutdown CloudServer...");
+        log.info("Shutting down CloudServer...");
         CloudServer.getInstance().shutdownEverything();
     }
 }

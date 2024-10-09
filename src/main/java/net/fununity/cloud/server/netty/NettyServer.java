@@ -30,7 +30,7 @@ public class NettyServer implements Runnable {
 			ServerBootstrap bootstrap = new ServerBootstrap();
 			bootstrap.group(bossGroup, workerGroup)
 					.channel(NioServerSocketChannel.class)
-					.handler(new LoggingHandler(LogLevel.INFO)) // For logging purposes
+					.handler(new LoggingHandler("NettyServerBootstrap", LogLevel.DEBUG))
 					.localAddress(hostname, port)
 					.childHandler(new ChannelInitializer<SocketChannel>() {
 						@Override

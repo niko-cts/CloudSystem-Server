@@ -34,9 +34,9 @@ public class NetworkConfig {
 	private boolean enableRepositoryManager;
 
 	@JsonProperty("servers")
-	List<ServerConfig> serverConfigs;
+	private List<ServerConfig> serverConfigs;
 
 	@JsonProperty("plugins")
-	List<PluginConfig> pluginConfigs;
+	private List<PluginConfig> pluginConfigs;
 
 }
