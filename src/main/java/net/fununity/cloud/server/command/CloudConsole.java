@@ -23,7 +23,7 @@ import java.io.IOException;
  * @since 0.0.1
  */
 @Slf4j
-public class CloudConsole implements Runnable {
+public class CloudConsole {
 
     private Terminal terminal;
 	@Getter
@@ -43,7 +43,7 @@ public class CloudConsole implements Runnable {
         this.exit = false;
     }
 
-    public void run() {
+    public void start() {
         try {
             log.debug("Starting cloud console...");
             this.terminal = TerminalBuilder.builder()

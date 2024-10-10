@@ -13,14 +13,14 @@ import java.util.Objects;
 
 @Slf4j
 @RequiredArgsConstructor
-public class LogFileCleanerUtil {
+public class LogFileCleanerUtil implements Runnable {
 
 	public static final String DATE_PATTERN = "yyyy-MM-dd";
 	@NotNull
 	private final File directory;
 	private final OffsetDateTime deleteBefore;
 
-	public void clean() {
+	public void run() {
 		if (!directory.exists() || directory.listFiles() == null) {
 			log.warn("Directory {} does not exist!", directory);
 			return;
@@ -42,6 +42,8 @@ public class LogFileCleanerUtil {
 					}
 				} catch (DateTimeParseException e) {
 					log.warn("Could not parse date by pattern {} from file name: {}", DATE_PATTERN, file.getName());
+				} catch (Exception e) {
+					log.warn("Error while deleting file: {}", file.getName(), e);
 				}
 			}
 		}

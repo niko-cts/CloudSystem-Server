@@ -59,10 +59,8 @@ public class CloudServer {
 		this.cloudEventManager.addCloudListener(new RequestEventListener());
 
 		Thread.ofVirtual().name("NettyServer").start(nettyServer);
-
-		new LogFileCleanerUtil(Path.of("logs", "cloud").toFile(), OffsetDateTime.now().minusMonths(3)).clean();
-
-		this.cloudConsole.run();
+		Thread.ofVirtual().name("LogFileCleaner").start(new LogFileCleanerUtil(Path.of("logs", "cloud").toFile(), OffsetDateTime.now().minusMonths(3)));
+		this.cloudConsole.start();
 	}
 
 
