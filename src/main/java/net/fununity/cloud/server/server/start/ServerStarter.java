@@ -2,7 +2,6 @@ package net.fununity.cloud.server.server.start;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
-import com.github.dockerjava.api.command.VersionCmd;
 import com.github.dockerjava.api.model.*;
 import com.google.common.base.Preconditions;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -49,9 +49,10 @@ public class ServerStarter {
 		this.port = server.getServerPort();
 		this.templateDir = new File(server.getConfig().getDirectory());
 		this.backup = server.getConfig().isBackup();
-		this.plugins = CloudServer.getInstance().getConfigHandler().getByNames(server.getConfig().getPlugins());
+		this.plugins = new ArrayList<>(CloudServer.getInstance().getConfigHandler().getByNames(server.getConfig().getPlugins()));
 
 		Preconditions.checkArgument(templateDir.exists(), "Server template directory does not exists %s", templateDir.getAbsolutePath());
+		Preconditions.checkArgument(templateDir.isDirectory(), "Server template is not a directory %s", templateDir.getAbsolutePath());
 	}
 
 
@@ -65,33 +66,29 @@ public class ServerStarter {
 				.thenRun(this::checkOrCreateImage)
 				.thenApply(unused -> checkOrCreateContainer())
 				.thenAccept(this::startContainer)
-				.whenComplete(this::handleCompletion);
+				.whenComplete(this::onComplete);
 	}
 
 	private void logDockerVersion() {
-		VersionCmd versionCmd = dockerClient.versionCmd();
-		log.debug("Docker version: {}", versionCmd.exec().getVersion());
+		log.debug("Docker version: {}", dockerClient.versionCmd().exec().getVersion());
 	}
 
-	private void handleCompletion(Void ignored, Throwable throwable) {
+	private void onComplete(Void ignored, Throwable throwable) {
 		try {
 			if (throwable != null) {
-				log.error(String.format("Error while creating Server %s on port %s. Will not start, because:", containerName, port), throwable);
+				log.error(String.format("Error while creating Server %s on port %s. Will trying to stop server now...", containerName, port), throwable);
 				server.stop();
+				CloudServer.getInstance().getServerManager().startFailed(server);
 			} else {
 				log.info("Server started: {}", server);
 			}
 		} finally {
-			closeDockerClient();
-		}
-	}
-
-	private void closeDockerClient() {
-		if (dockerClient != null) {
-			try {
-				dockerClient.close();
-			} catch (IOException e) {
-				log.error("Could not close docker client", e);
+			if (dockerClient != null) {
+				try {
+					dockerClient.close();
+				} catch (IOException e) {
+					log.error("Could not close docker client", e);
+				}
 			}
 		}
 	}
@@ -102,7 +99,14 @@ public class ServerStarter {
 			return CompletableFuture.completedFuture(null);
 		}
 
-		List<PluginUpdater> jarUpdaters = plugins.stream().map(plugin -> new PluginUpdater(new File(plugin.getLocalPath()), plugin.getNexusPluginUrl())).toList();
+		List<PluginUpdater> jarUpdaters = plugins.stream()
+				.filter(plugin -> plugin.getRepository() != null && !plugin.getRepository().getBaseUrl().equals("null"))
+				.map(plugin -> new PluginUpdater(new File(plugin.getLocalPath()),
+				plugin.getRepository().getBaseUrl(),
+				plugin.getRepository().getRepositoryId(),
+				plugin.getRepository().getGroupId(),
+				plugin.getRepository().getArtifactId(),
+				plugin.getRepository().getVersion())).toList();
 		CompletableFuture<?>[] futures = new CompletableFuture[jarUpdaters.size()];
 
 		for (int i = 0; i < jarUpdaters.size(); i++) {
@@ -128,11 +132,11 @@ public class ServerStarter {
 		});
 
 		if (plugins.isEmpty()) {
-			throw new RuntimeException("No plugin loaded for server type " + imageName);
+			throw new RuntimeException(String.format("No plugin loaded for server type %s! Needed at least CloudClient to work.", imageName));
 		}
 
 		if (this.port < DEFAULT_PORT)
-			throw new RuntimeException("Given port for server " + containerName + " is below default port 25565: " + this.port);
+			throw new RuntimeException("Given port for server %s is below default port 25565: %d".formatted(containerName, this.port));
 	}
 
 
@@ -155,7 +159,7 @@ public class ServerStarter {
 						.filter(path -> path.getFileName().toString().startsWith("world")) // Filter names starting with "world"
 						.map(path -> new Bind(path.toString(), new Volume("/" + path.getFileName()))).toList());
 			} catch (IOException e) {
-				log.error("Could not create backup directory for {}", templateDir, e);
+				throw new RuntimeException("Could not create backup directory for %s".formatted(templateDir), e);
 			}
 		}
 
@@ -171,8 +175,11 @@ public class ServerStarter {
 				.withName(containerName)
 				.withHostConfig(hostConfig)
 				.withExposedPorts(exposedPort)
-				.withEnv(String.format("%s=%s", SystemConstants.ENV_CONTAINER_NAME, containerName))  // Set CONTAINER_NAME environment variable
-				.exec();
+				.withEnv(
+						"%s=%s".formatted(SystemConstants.ENV_SERVER_ID, containerName),
+						"%s=%s".formatted(SystemConstants.ENV_SERVER_NAME, server.getServerName()),
+						"%s=%s".formatted(SystemConstants.ENV_RAM, server.getConfig().getRam())
+				).exec();
 
 
 		log.debug("Container {} created with ID {} on network {}.", containerName, container.getId(), SystemConstants.NETWORK_NAME);

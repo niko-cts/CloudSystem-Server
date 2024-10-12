@@ -108,8 +108,8 @@ public class ConfigHandler {
 				this.serverConfig.addAll(networkConfig.getServerConfigs().stream().sorted(Comparator.comparing(ServerConfig::getPriority)).toList());
 
 			log.debug("Network config-file is: {}", networkConfig);
-			log.debug("Found {} servers", serverConfig.size());
-			log.debug("Found {} plugins", pluginConfig.size());
+			log.info("Found {} servers", serverConfig.size());
+			log.info("Found {} plugins", pluginConfig.size());
 
 			String unsetServer = Arrays.stream(ServerType.values()).filter(s -> getByServerConfigByType(s).isEmpty()).map(Enum::name).collect(Collectors.joining(","));
 			if (!unsetServer.isEmpty())
@@ -119,7 +119,7 @@ public class ConfigHandler {
 					.filter(f -> !new File(f.getLocalPath()).exists())
 					.map(PluginConfig::getName).collect(Collectors.joining(", "));
 			if (!notfoundPlugins.isEmpty())
-				log.warn("The following plugin-names have not be found locally: {}", notfoundPlugins);
+				log.warn("The following plugin-names have not been found locally: {}", notfoundPlugins);
 		} catch (IOException e) {
 			log.error("The network config file could not been loaded correctly: ", e);
 		}

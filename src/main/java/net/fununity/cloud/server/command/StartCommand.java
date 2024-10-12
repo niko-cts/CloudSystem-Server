@@ -51,7 +51,7 @@ public class StartCommand extends Command {
             }
         }
 
-        log.info("Starting {} server with type {}", amount, args[0]);
+        log.info("Starting {} server of type {}", amount, args[0]);
         for (int i = 0; i < amount; i++)
             manager.createServerByServerType(serverType);
     }

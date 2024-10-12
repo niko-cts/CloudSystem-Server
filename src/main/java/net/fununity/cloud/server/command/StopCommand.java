@@ -37,13 +37,10 @@ public class StopCommand extends Command {
             log.info("Shutting down all server of type {}...", serverType);
             ServerUtils.shutdownAllServersOfType(serverType);
         } catch (IllegalArgumentException exception) {
-            manager.getServerByIdentifier(args[0]).ifPresentOrElse(
-                    server -> {
-                        log.info("Shutting down server {}...", server.getServerId());
-                        manager.requestStopServer(server);
-                    },
-                    () -> sendIllegalIdOrServerType(args[0])
-            );
+            getServerIdOrSendIllegal(args[0], server -> {
+                log.info("Shutting down server {}...", server.getServerId());
+                manager.requestStopServer(server);
+            });
         }
     }
 }

@@ -33,7 +33,7 @@ public class CloudConsole {
     /**
      * Instantiate this class.
      * Loads the {@link CommandHandler}
-     * Starts the console input via {@link #run()}
+     * Starts the console input via {@link #start()}
      *
      * @since 0.0.1
      */

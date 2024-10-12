@@ -26,7 +26,6 @@ public abstract class Command {
 	private final String description;
 	private final String[] aliases;
 
-
 	/**
 	 * Instantiate this class with the name of a command and with none or specified aliases
 	 * @param name String - Name of command
@@ -59,11 +58,9 @@ public abstract class Command {
 	}
 
 	public void getServerIdOrSendIllegal(String serverId, Consumer<Server> server) {
-		manager.getServerByIdentifier(serverId).ifPresentOrElse(server, () -> sendIllegalIdOrServerType(serverId));
-	}
-
-	public void sendIllegalServerId(String type) {
-		log.warn("{} is invalid! Type 'list' to see all servers.", type);
+		manager.getServerByIdentifier(serverId)
+				.or(() -> manager.getServerByName(serverId))
+				.ifPresentOrElse(server, () -> sendIllegalIdOrServerType(serverId));
 	}
 
 	public void sendIllegalIdOrServerType(String argument) {

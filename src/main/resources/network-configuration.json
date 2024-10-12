@@ -10,7 +10,7 @@
     {
       "serverType": "BUNGEECORD",
       "ram": "512",
-      "directory": "./Servers/Templates/BungeeCord/",
+      "directory": "./server/BungeeCord/",
       "amountOnStartup": 1,
       "minimumAmount": 1,
       "priority": 1,
@@ -23,7 +23,7 @@
       "serverType": "LOBBY",
       "maxPlayers": 20,
       "ram": "1536",
-      "directory": "./servers/templates/Lobby/",
+      "directory": "./server/Lobby/",
       "amountOnStartup": 2,
       "minimumAmount": 2,
       "priority": 2,
@@ -37,7 +37,13 @@
     {
       "name": "CloudSystem-Client",
       "localPath": "./plugins/CloudSystem-Client-MASTER.jar",
-      "nexusPluginUrl": "url"
+      "repository": {
+        "baseUrl": "null",
+        "repositoryId": "id",
+        "groupId": "group",
+        "artifactId": "artifact",
+        "version": "version"
+      }
     }
   ]
 }

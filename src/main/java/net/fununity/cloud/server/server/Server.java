@@ -102,15 +102,14 @@ public final class Server {
 			return;
 		}
 
-		File serverDir = new File(config.getDirectory());
-		if (!serverDir.exists() || !serverDir.isDirectory()) {
-			log.error("Server directory {} does not exist or is not a directory. Can not start server: {}", serverDir, serverId);
-			return;
+		try {
+			this.serverState = ServerState.BOOTING;
+			new ServerStarter(this).loadPluginsAndStartServerDockerized();
+			this.aliveChecker = new ServerAliveChecker(this);
+		} catch (Exception exception) {
+			log.error("Could not start server {}. Removing from list...", serverId, exception);
+			CloudServer.getInstance().getServerManager().startFailed(this);
 		}
-
-		this.serverState = ServerState.BOOTING;
-		new ServerStarter(this).loadPluginsAndStartServerDockerized();
-		this.aliveChecker = new ServerAliveChecker(this);
 	}
 
 

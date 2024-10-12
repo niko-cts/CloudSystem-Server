@@ -44,7 +44,7 @@ public class ServerUtils {
 		log.info("Stopping all server...");
 		MANAGER.getStartQueue().forEach(Server::markForStop);
 		MANAGER.getRunningServers().stream().filter(s -> s.getConfig().getServerType() != ServerType.BUNGEECORD).forEach(MANAGER::requestStopServer);
-		MANAGER.getAllServerByType(ServerType.BUNGEECORD).forEach(MANAGER::requestStopServer);
+		MANAGER.getRunningServerByType(ServerType.BUNGEECORD).forEach(MANAGER::requestStopServer);
 	}
 
 	/**

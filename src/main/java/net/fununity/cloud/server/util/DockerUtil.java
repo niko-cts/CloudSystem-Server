@@ -15,6 +15,7 @@ public class DockerUtil {
 	}
 
 	public static DockerClient createDockerClient() {
+
 		DefaultDockerClientConfig.Builder builder = DefaultDockerClientConfig.createDefaultConfigBuilder();
 		if (isLinux()) {
 			builder.withDockerHost("unix:///var/run/docker.sock");
@@ -24,7 +25,14 @@ public class DockerUtil {
 
 		DockerClientConfig config = builder.build();
 
-		ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder().dockerHost(config.getDockerHost()).sslConfig(config.getSSLConfig()).maxConnections(100).connectionTimeout(Duration.ofSeconds(30)).responseTimeout(Duration.ofSeconds(45)).build();
+		ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient
+				.Builder()
+				.dockerHost(config.getDockerHost())
+				.sslConfig(config.getSSLConfig())
+				.maxConnections(100)
+				.connectionTimeout(Duration.ofSeconds(30))
+				.responseTimeout(Duration.ofSeconds(45)).build();
+
 		return DockerClientImpl.getInstance(config, httpClient);
 	}
 

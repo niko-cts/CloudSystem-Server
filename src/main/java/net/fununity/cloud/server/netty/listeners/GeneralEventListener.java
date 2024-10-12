@@ -36,10 +36,10 @@ public class GeneralEventListener extends AbstractEventListener {
 						EventSendingHelper.sendCocAttackServerAmount();
 					}
 
-					log.info("Client registered: {}", server.getServerId());
-					MANAGER.getServerByIdentifier(server.getServerId()).ifPresent(MANAGER::serverCompletelyStarted);
+					log.debug("Client registered: {}", server.getServerId());
+					MANAGER.serverCompletelyStarted(server);
 				}, s -> {
-					log.error("Client registered with unknown server id {}! Will send disconnect!", s);
+					log.warn("Client registered with unknown server id {}! Will send disconnect!", s);
 					CLIENT_HANDLER.sendEvent(ctx, new CloudEvent(CloudEvent.CLIENT_DISCONNECT_GRACEFULLY));
 				});
 			}

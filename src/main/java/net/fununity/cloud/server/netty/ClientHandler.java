@@ -89,7 +89,7 @@ public class ClientHandler {
 			log.debug("Sending event to server-id {}: {}", serverId, event);
 			ctx.writeAndFlush(event);
 		} else {
-			log.error("Tried to send an event to ServerId '{}' but CTX was null. Event: {}", serverId, event);
+			log.warn("Tried to send an event to ServerId '{}' but CTX was null. Event: {}", serverId, event);
 		}
 	}
 
@@ -105,7 +105,7 @@ public class ClientHandler {
 			log.debug("Sending event to server {}: {}", server.getServerId(), event);
 			ctx.writeAndFlush(event);
 		} else {
-			log.error("Tried to send an event to Server '{}:{}' but CTX was null. Event: {}", server.getServerId(), server.getServerPort(), event);
+			log.warn("Tried to send an event to Server '{}:{}' but CTX was null. Event: {}", server.getServerId(), server.getServerPort(), event);
 		}
 	}
 

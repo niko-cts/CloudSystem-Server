@@ -10,9 +10,16 @@
 
     <repositories>
         <repository>
-            <id>jcenter</id>
-            <name>jcenter-bintray</name>
-            <url>https://jcenter.bintray.com</url>
+            <id>maven-central</id>
+            <url>https://repo.maven.apache.org/maven2/</url>
+        </repository>
+        <repository>
+            <id>fununity-snapshots</id>
+            <url>https://nexus.guccigame.de/repository/fununity-snapshots/</url>
+        </repository>
+        <repository>
+            <id>fununity-releases</id>
+            <url>https://nexus.guccigame.de/repository/fununity-releases/</url>
         </repository>
     </repositories>
 
@@ -36,11 +43,18 @@
             <version>3.4.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+            <scope>compile</scope>
+        </dependency>
         <!-- Transport Dependency for HTTP communication with Docker -->
         <dependency>
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java-transport-httpclient5</artifactId>
             <version>3.4.0</version>
+            <scope>compile</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
         <dependency>
@@ -69,9 +83,9 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.6</version>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>32.0.1-jre</version>
             <scope>compile</scope>
         </dependency>
 
@@ -155,7 +169,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.4</version>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -165,18 +179,33 @@
                         <configuration>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <shadedClassifierName>shaded</shadedClassifierName>
-                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                            <createDependencyReducedPom>false</createDependencyReducedPom> <!-- Disable dependency reduction -->
                             <artifactSet>
-                                <includes>
-                                    <include>net.fununity.cloud</include>
-                                    <include>io.netty</include>
-                                    <include>commons-io</include>
-                                    <include>org.slf4j</include>
-                                    <include>org.jline</include>
-                                    <include>ch.qos.logback</include>
-                                    <include>com.fasterxml.jackson.core</include>
-                                    <include>com.github.dockerjava</include>
-                                </includes>
+<!--                                <includes>-->
+<!--                                    <include>net.fununity.cloud</include>-->
+<!--                                    <include>io.netty</include>-->
+<!--                                    <include>commons-io</include>-->
+<!--                                    <include>org.slf4j</include>-->
+<!--                                    <include>org.jline</include>-->
+<!--                                    <include>ch.qos.logback</include>-->
+<!--                                    <include>com.fasterxml.jackson.core</include>-->
+<!--                                    <include>com.github.docker-java:docker-java</include>-->
+<!--                                    <include>com.github.docker-java:docker-java-transport-httpclient5</include>-->
+<!--                                    <include>com.github.docker-java:docker-java-transport-jersey</include> &lt;!&ndash; Jersey transport &ndash;&gt;-->
+<!--                                    <include>org.apache.httpcomponents.client5:httpclient5</include>-->
+<!--                                    <include>org.apache.httpcomponents.core5:httpcore5</include>-->
+<!--                                    <include>org.apache.httpcomponents.core5:httpcore5-h2</include>-->
+<!--                                    <include>org.apache.commons:commons-compress</include>-->
+<!--                                    <include>com.github.docker-java:docker-java-core</include>-->
+<!--                                    <include>com.github.docker-java:docker-java-api</include>-->
+<!--                                    <include>com.github.docker-java:docker-java-transport</include>-->
+<!--                                    <include>org.apache.commons:commons-lang3</include>-->
+<!--                                    <include>com.google.guava</include>-->
+<!--                                </includes>-->
+                                <excludes>
+                                    <exclude>com.google.common.collect</exclude>
+                                    <exclude>io.netty.util</exclude>
+                                </excludes>
                             </artifactSet>
                         </configuration>
                     </execution>

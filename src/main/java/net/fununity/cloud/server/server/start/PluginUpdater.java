@@ -22,6 +22,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Base64;
 
+import static java.lang.String.format;
+
 @Slf4j
 @RequiredArgsConstructor
 public class PluginUpdater {
@@ -38,14 +40,16 @@ public class PluginUpdater {
     public void checkAndUpdateJar() {
         File checksumFile = new File(pluginFile.getAbsolutePath() + ".sha1");
         try {
-            log.debug("Checking if {} is up to date on {}", pluginFile.getName(), pluginDownloadURL);
+            log.debug("Checking if {} is up to date on {}", pluginFile.getName(), baseUrl);
             pluginDownloadURL = buildDownloadUrl();
+            log.debug("Plugin {} download url is {}", pluginFile.getName(), pluginDownloadURL);
             byte[] remoteChecksum = getRemoteChecksum(pluginDownloadURL + ".sha1");
 
             if (!pluginFile.exists() || !checksumFile.exists()) {
                 log.debug("Jar file not found or checksum missing. Downloading: {}", pluginFile);
                 downloadJar(pluginFile);
                 saveChecksum(checksumFile, remoteChecksum);
+                log.info("Downloaded jar {}", pluginFile.getName());
                 return;
             }
 
@@ -67,11 +71,11 @@ public class PluginUpdater {
         if (version.toLowerCase().contains("snapshot")) {
             String latestSnapshotVersion = getLatestSnapshotVersion(this.baseUrl, this.repoId, this.groupId, this.artifact, this.version);
             log.debug("Latest sub-version of {}-{} is {}", artifact, version, latestSnapshotVersion);
-            return String.format("%s/repository/%s/%s/%s/%s/%s-%s.jar",
+            return format("%s/repository/%s/%s/%s/%s/%s-%s.jar",
                     this.baseUrl, this.repoId, this.groupId.replace('.', '/'),
                     this.artifact, this.version, this.artifact, latestSnapshotVersion);
         } else {
-            return String.format("%s/repository/%s/%s/%s/%s/%s-%s.jar",
+            return format("%s/repository/%s/%s/%s/%s/%s-%s.jar",
                     this.baseUrl, this.repoId, this.groupId.replace('.', '/'),
                     this.artifact, this.version, this.artifact, this.version);
         }
@@ -158,7 +162,7 @@ public class PluginUpdater {
         String pw = System.getProperty(SystemConstants.PROP_NEXUS_PASSWORD);
         if (user != null && pw != null) {
             connection.setRequestProperty("Authorization",
-                    "Basic " + Base64.getEncoder().encodeToString(String.format(
+                    "Basic " + Base64.getEncoder().encodeToString(format(
                             "%s:%s", user, pw
                     ).getBytes(StandardCharsets.UTF_8)));
         } else {
@@ -167,7 +171,7 @@ public class PluginUpdater {
     }
 
     private String getLatestSnapshotVersion(String baseUrl, String repoId, String groupId, String artifactId, String version) {
-        String metadataUrl = String.format("%s/repository/%s/%s/%s/%s/maven-metadata.xml",
+        String metadataUrl = format("%s/repository/%s/%s/%s/%s/maven-metadata.xml",
                 baseUrl, repoId, groupId.replace(".", "/"), artifactId, version);
 
         HttpURLConnection connection = null;
@@ -195,7 +199,7 @@ public class PluginUpdater {
                 }
             }
         } catch (IOException | ParserConfigurationException | SAXException e) {
-            throw new RuntimeException("Could not get latest version of plugin" + artifactId + "-" + version, e);
+            throw new RuntimeException(format("Could not get latest version of plugin %s. Artifact %s Version %s", pluginFile.getName(), artifactId, version), e);
         } finally {
             if (connection != null)
                 connection.disconnect();
