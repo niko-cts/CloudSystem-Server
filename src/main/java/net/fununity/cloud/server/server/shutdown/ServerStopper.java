@@ -9,6 +9,7 @@ import net.fununity.cloud.server.server.Server;
 import net.fununity.cloud.server.util.DockerUtil;
 import net.fununity.cloud.server.util.EventSendingHelper;
 
+import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -127,37 +128,33 @@ public class ServerStopper {
     private void stopAndRemoveContainer() {
         String serverId = server.getServerId();
         log.debug("Stopping docker container {}", serverId);
-        DockerClient dockerClient = DockerUtil.createDockerClient();
-
-        if (doesContainerNotExist(dockerClient)) {
-            log.debug("Docker container {} does not exist. Skipping stop and remove.", serverId);
-            return;
-        }
-
-        try {
-            dockerClient.stopContainerCmd(serverId).exec();
-            log.debug("Docker container {} stopped successfully.", serverId);
-        } catch (Exception e) {
-            log.warn("Error while stopping Docker container {}. Attempting to kill it.", serverId, e);
-            try {
-                dockerClient.killContainerCmd(serverId).exec();
-                log.info("Docker container {} killed successfully.", serverId);
-            } catch (Exception killException) {
-                log.warn("Error while killing Docker container {} ", serverId, killException);
+        try (DockerClient dockerClient = DockerUtil.createDockerClient()) {
+            if (doesContainerNotExist(dockerClient)) {
+                log.debug("Docker container {} does not exist. Skipping stop and remove.", serverId);
+                return;
             }
-        }
 
-        try {
-            log.debug("Removing Docker container {}.", server.getServerId());
-            dockerClient.removeContainerCmd(server.getServerId()).exec();
-        } catch (Exception e) {
-            log.warn("Error while removing Docker container {} ", server.getServerId(), e);
-        } finally {
             try {
-                dockerClient.close();
+                dockerClient.stopContainerCmd(serverId).exec();
+                log.debug("Docker container {} stopped successfully.", serverId);
             } catch (Exception e) {
-                log.warn("Error while closing Docker client.", e);
+                log.warn("Error while stopping Docker container {}. Attempting to kill it.", serverId, e);
+                try {
+                    dockerClient.killContainerCmd(serverId).exec();
+                    log.info("Docker container {} killed successfully.", serverId);
+                } catch (Exception killException) {
+                    log.warn("Error while killing Docker container {} ", serverId, killException);
+                }
             }
+
+            try {
+                log.debug("Removing Docker container {}.", server.getServerId());
+                dockerClient.removeContainerCmd(server.getServerId()).exec();
+            } catch (Exception e) {
+                log.warn("Error while removing Docker container {} ", server.getServerId(), e);
+            }
+        } catch (IOException e) {
+            log.warn("Error while closing Docker client.", e);
         }
     }
 

@@ -39,6 +39,8 @@ public class LogLevelCommand extends Command {
     private void setLoggingLevelForAllContexts(String levelStr) {
         LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
         Level level = Level.toLevel(levelStr, Level.INFO); // Default to INFO if the levelStr is invalid
-        loggerContext.getLoggerList().forEach(logger -> logger.setLevel(level));
+        loggerContext.getLoggerList().stream()
+            .filter(logger -> logger.getName().startsWith("net.fununity.cloud"))
+            .forEach(logger -> logger.setLevel(level));
     }
 }

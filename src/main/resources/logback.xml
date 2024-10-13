@@ -4,25 +4,36 @@
     <timestamp key="date" datePattern="yyyy-MM-dd" timeZone="Europe/Berlin"/>
 
     <root level="DEBUG">
-        <appender-ref ref="STDOUT"/>
         <appender-ref ref="INFO_FILE"/>
         <appender-ref ref="ERROR_FILE"/>
-    </root>
-
-    <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
 
+    <logger name="net.fununity.cloud" level="DEBUG">
+        <appender-ref ref="DEBUG_FILE"/>
+    </logger>
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{0} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="DEBUG_FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/cloud/${date}_debug.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
     <appender name="INFO_FILE" class="ch.qos.logback.core.FileAppender">
         <file>logs/cloud/${date}_info.log</file>
         <append>true</append>
-        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>INFO</level>
         </filter>
         <encoder>
@@ -33,8 +44,8 @@
     <appender name="ERROR_FILE" class="ch.qos.logback.core.FileAppender">
         <file>logs/cloud/${date}_error.log</file>
         <append>true</append>
-        <filter class="ch.qos.logback.classic.filter.LevelFilter">
-            <level>ERROR</level>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
         </filter>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>

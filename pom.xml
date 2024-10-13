@@ -43,12 +43,6 @@
             <version>3.4.0</version>
             <scope>compile</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.12.0</version>
-            <scope>compile</scope>
-        </dependency>
         <!-- Transport Dependency for HTTP communication with Docker -->
         <dependency>
             <groupId>com.github.docker-java</groupId>
@@ -76,19 +70,6 @@
             <scope>compile</scope>
         </dependency>
 
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>2.11.0</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>32.0.1-jre</version>
-            <scope>compile</scope>
-        </dependency>
-
         <!-- https://mvnrepository.com/artifact/org.jline/jline -->
         <dependency>
             <groupId>org.jline</groupId>
@@ -105,11 +86,12 @@
             <scope>compile</scope>
         </dependency>
 
-
+        <!-- https://mvnrepository.com/artifact/io.netty/netty-transport -->
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>4.1.113.Final</version>
+            <artifactId>netty-transport</artifactId>
+            <version>4.1.114.Final</version>
+            <scope>compile</scope>
         </dependency>
 
 
@@ -124,12 +106,6 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
             <version>5.12.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -180,6 +156,16 @@
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <createDependencyReducedPom>false</createDependencyReducedPom> <!-- Disable dependency reduction -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                             <artifactSet>
 <!--                                <includes>-->
 <!--                                    <include>net.fununity.cloud</include>-->
@@ -205,6 +191,9 @@
                                 <excludes>
                                     <exclude>com.google.common.collect</exclude>
                                     <exclude>io.netty.util</exclude>
+                                    <exclude>org.bouncycastle</exclude>
+                                    <exclude>org.apache.commons.compress</exclude>
+                                    <exclude>org.glassfish</exclude>
                                 </excludes>
                             </artifactSet>
                         </configuration>

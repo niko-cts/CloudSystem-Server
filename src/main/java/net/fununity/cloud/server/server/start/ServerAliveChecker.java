@@ -40,6 +40,7 @@ public class ServerAliveChecker extends TimerTask {
 		this.eventOnTimerRuns = CloudServer.getInstance().getNetworkConfig().map(NetworkConfig::getStartSendingAliveEventOnTimerRuns).orElse(30);
 		this.server = Objects.requireNonNull(server);
 		this.aliveOrdinal = 0;
+		log.debug("Starting alive checker for server '{}' with period of {} ms.", server.getServerId(), periodInMillis);
 		timer = new Timer();
 		timer.schedule(this, Math.max(20000, periodInMillis * 2), periodInMillis);
 	}
